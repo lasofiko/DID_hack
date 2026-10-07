@@ -1,0 +1,14 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "did-hack"
+version = "0.1.0"
+description = "DID Hack application skeleton"
+requires-python = ">=3.12"
+dependencies = ["fastapi==0.121.3", "uvicorn==0.38.0"]
+
+[tool.setuptools]
+packages = ["did_core", "did_agent", "did_environment", "did_ml", "did_backend"]
+package-dir = {did_core = "packages/contracts/did_core", did_agent = "packages/agent/did_agent", did_environment = "packages/environment/did_environment", did_ml = "packages/ml/did_ml", did_backend = "apps/backend/did_backend"}

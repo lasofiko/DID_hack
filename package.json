@@ -1,0 +1,9 @@
+{
+  "name": "did-hack",
+  "private": true,
+  "scripts": {
+    "frontend:install": "npm ci --prefix apps/frontend",
+    "build": "npm run build --prefix apps/frontend",
+    "dev": "python scripts/dev.py"
+  }
+}
