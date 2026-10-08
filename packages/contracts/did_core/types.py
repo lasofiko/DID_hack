@@ -1,5 +1,6 @@
 """Общий словарь команды. Только форматы данных, без логики и валидации."""
-from typing import Literal, TypedDict
+from __future__ import annotations
+from typing import Literal, TypedDict, NotRequired
 
 Action = Literal["explore", "go_to", "collect", "return_to_base"]
 Status = Literal["idle", "running", "paused", "returning", "finished", "stopped", "failed"]
@@ -15,6 +16,7 @@ class StartRequest(TypedDict):
     scenario: Literal["easy", "medium", "hard"]
     seed: int
     mode: Literal["baseline", "adaptive"]
+    planner_mode: NotRequired[Literal["algorithmic", "llm"]]
 
 
 class Observation(TypedDict):
@@ -53,7 +55,7 @@ class MissionState(TypedDict):
 class JournalEntry(TypedDict):
     sim_time: float
     hypothesis_id: str
-    stage: Literal["hypothesis", "observation", "conclusion"]
+    stage: Literal["hypothesis", "experiment", "observation", "conclusion", "model_update", "replan"]
     text: str
 
 
