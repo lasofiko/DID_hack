@@ -1,4 +1,5 @@
 """Подписи будущих реализаций. Protocol не выполняет работу."""
+from __future__ import annotations
 from typing import Protocol
 from .types import (
     Command, CostEstimate, EnergyMeasurement, MissionState,

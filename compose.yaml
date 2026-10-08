@@ -1,0 +1,33 @@
+services:
+  simulation:
+    image: did-hack:jazzy
+    build:
+      context: .
+      args:
+        BASE_IMAGE: ${BASE_IMAGE:-ros:jazzy-ros-base-noble}
+        UBUNTU_MIRROR: ${UBUNTU_MIRROR:-}
+    # Native Docker engine architecture: ARM64 on Apple Silicon, AMD64 on x86 servers.
+    init: true
+    shm_size: 512m
+    cpus: 8
+    mem_limit: 7g
+    environment:
+      ROS_DOMAIN_ID: "42"
+      TURTLEBOT3_MODEL: burger
+      LIBGL_ALWAYS_SOFTWARE: "1"
+      GALLIUM_DRIVER: llvmpipe
+      LP_NUM_THREADS: "4"
+      DID_JUDGE_PRIVATE_LOG: /workspace/output/private-judge-events.jsonl
+      DID_PLANNER_FACTORY: ${DID_PLANNER_FACTORY:-}
+      DID_ENERGY_FACTORY: ${DID_ENERGY_FACTORY:-}
+      RENDER_MODE: ${RENDER_MODE:-egl}
+    volumes:
+      - ./experiments/runs/docker:/workspace/output
+      - ./scripts:/workspace/DID_hack/scripts:ro
+      - gazebo-fuel:/root/.gz/fuel
+    ports:
+      - "127.0.0.1:${DID_PORT:-3000}:8000"
+    command: [python3, -m, did_backend.main]
+    stop_grace_period: 25s
+volumes:
+  gazebo-fuel:
