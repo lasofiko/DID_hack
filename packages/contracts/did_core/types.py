@@ -64,8 +64,23 @@ class EnergyMeasurement(TypedDict):
     distance_m: float
     energy_used: float
     turning: bool
+    # Total absolute angular travel in radians, not signed final heading delta.
+    # Required at runtime for turning=True; absent/zero for straight movement.
+    angle_rad: NotRequired[float]
 
 
 class CostEstimate(TypedDict):
     energy_per_m: float
     uncertainty: float | None
+
+
+class TurnEnergyMeasurement(TypedDict):
+    cell: Point
+    distance_m: float  # Zero for an isolated in-place turn.
+    angle_rad: float  # Non-negative sum of absolute heading increments.
+    energy_used: float
+
+
+class TurnCostEstimate(TypedDict):
+    energy_per_rad: float | None  # Unknown until configured or measured.
+    uncertainty: float | None  # Standard deviation, energy/radian.

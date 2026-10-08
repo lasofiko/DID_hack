@@ -4,6 +4,11 @@ FastAPI обслуживает React и ROS-мост из одного конт�
 Observation/Subgoal/MissionState сохранены. Дополнительная телеметрия описана
 в `packages/contracts/did_core/web.py`.
 
+Внутренний контракт энергии расширен для угла поворотов: EnergyMeasurement.angle_rad,
+TurnEnergyMeasurement и TurnCostEstimate. Это не поля HTTP/WS или Observation.
+Адаптер должен разделять прямое движение и повороты на месте, получать угол
+из реальной ориентации робота. Инструкция: docs/energy.md.
+
 | Метод / путь | Вход | Ответ |
 |---|---|---|
 | GET /api/health | — | 200: `{"status":"ok"}`, независимо от ROS |
