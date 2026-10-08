@@ -46,3 +46,50 @@ test('ROS bottom-first occupancy rows flip once and obstacle/free/unknown stay d
  assert.equal(rasterOffset(0,2,3),16);assert.equal(rasterOffset(1,2,3),20);assert.equal(rasterOffset(4,2,3),0);assert.equal(rasterOffset(5,2,3),4);
  assert.notDeepEqual(occupancyColor(-1),occupancyColor(0));assert.notDeepEqual(occupancyColor(0),occupancyColor(100));assert.deepEqual(occupancyColor(50),occupancyColor(100));
 });
+
+import {CommandQueue} from '../src/commandQueue.ts';
+import {heatColor} from '../src/mapMath.ts';
+import {FIXED_ENERGY_MAX} from '../src/palette.ts';
+test('fixed heat scale does not change when another cell gains a measurement; outliers clamp',()=>{
+ const old=heatColor(3,0,FIXED_ENERGY_MAX);const newCell=100;
+ assert.equal(heatColor(3,0,FIXED_ENERGY_MAX),old);assert.equal(heatColor(newCell,0,FIXED_ENERGY_MAX),heatColor(12,0,12));
+ assert.notEqual(heatColor(3,0,8),heatColor(3,0,newCell));
+});
+test('request deadline covers nonresponsive fetch and response body, preserves unknown delivery',async()=>{
+ let signal;const hanging=(_url,init)=>{signal=init.signal;return new Promise(()=>{})};
+ assert.equal((await sendCommand('stop',session,hanging,10)).kind,'timeout');assert.equal(signal.aborted,true);
+ const hangingBody=async()=>({ok:true,text:()=>new Promise(()=>{})});
+ assert.equal((await sendCommand('pause',session,hangingBody,10)).kind,'timeout');
+});
+test('Stop queues once behind normal command; dispatch order is serial, latest intent wins next slot',async()=>{
+ const sends=[],states=[],results=[];let release;
+ const sender=async cmd=>{sends.push(cmd);if(cmd==='pause')return await new Promise(r=>release=r);return {kind:'accepted',command:cmd}};
+ const q=new CommandQueue(s=>states.push(s),(cmd,n)=>results.push([cmd,n]),sender);
+ assert.equal(q.request('pause',session),true);assert.equal(q.request('return',session),false);
+ assert.equal(q.request('stop',session),true);assert.equal(q.request('stop',session),false);assert.deepEqual(sends,['pause']);
+ assert.deepEqual(states.at(-1),{pending:'pause',stopQueued:true});
+ release({kind:'accepted',command:'pause'});await new Promise(r=>setImmediate(r));
+ assert.deepEqual(sends,['pause','stop']);assert.equal(results.length,2);assert.deepEqual(states.at(-1),{pending:null,stopQueued:false});
+});
+test('queued Stop dispatches after timeout; duplicate pending Stop is ignored',async()=>{
+ const sends=[];let release;const sender=async cmd=>{sends.push(cmd);return await new Promise(r=>release=r)};
+ const q=new CommandQueue(()=>{},()=>{},sender);q.request('return',session);q.request('stop',session);
+ release({kind:'timeout'});await new Promise(r=>setImmediate(r));assert.deepEqual(sends,['return','stop']);
+ assert.equal(q.request('stop',session),false);assert.equal(q.request('start',session),false);
+ release({kind:'accepted'});await new Promise(r=>setImmediate(r));
+});
+
+import {reconcileCommand} from '../src/commandState.ts';
+const packet=status=>({session,state:{status}});
+test('old telemetry cannot acknowledge commands; unknown Reset never resolves from idle or terminal',()=>{
+ assert.equal(reconcileCommand('pause','running',session,packet('paused'),{kind:'accepted',command:'pause'},false),'waiting');
+ for(const status of ['idle','failed','stopped','finished'])for(const kind of ['timeout','network'])assert.equal(reconcileCommand('reset',status,session,packet(status),{kind},true),'waiting');
+ assert.equal(reconcileCommand('reset','idle',session,packet('idle'),{kind:'reset'},true),'confirmed');
+ assert.equal(reconcileCommand('reset','idle',{...session,seed:9},packet('idle'),{kind:'reset'},true),'waiting');
+});
+test('accepted Start immediately failing releases ordinary lock; old terminal frame after timeout does not',()=>{
+ assert.equal(reconcileCommand('start','idle',session,packet('failed'),{kind:'accepted',command:'start'},true),'terminal');
+ assert.equal(reconcileCommand('start','failed',session,packet('failed'),{kind:'timeout'},true),'waiting');
+ assert.equal(reconcileCommand('stop','running',session,packet('stopped'),{kind:'timeout'},true),'confirmed');
+ assert.equal(reconcileCommand('return','returning',session,packet('returning'),{kind:'timeout'},true),'waiting');
+});

@@ -1,3 +1,4 @@
+import {palette} from './palette.ts';
 import type {Cost, Grid, Point} from './types.ts';
 export const BASE: Point = {x:-2, y:-.5}; // Public mission configuration, configs/agent.json.
 export const ENERGY_CELL_SIZE = .5;
@@ -31,12 +32,13 @@ export function scaleLength(zoom:number):number {
 }
 export function heatColor(value:number,min:number,max:number):string {
  const ratio=max===min?.5:Math.max(0,Math.min(1,(value-min)/(max-min)));
- return `hsl(${165-145*ratio} 65% 55%)`;
+ const a=ratio<.5?palette.energyLow:palette.energyMid,b=ratio<.5?palette.energyMid:palette.energyHigh,f=ratio<.5?ratio*2:(ratio-.5)*2;
+ return `rgb(${a.map((v,i)=>Math.round(v+(b[i]-v)*f)).join(",")})`;
 }
 // ROS row zero is the bottom row; canvas raster row zero is the top row.
 export function rasterOffset(index:number,width:number,height:number):number {
  return ((height-1-Math.floor(index/width))*width+index%width)*4;
 }
 export function occupancyColor(value:number):[number,number,number] {
- return value<0?[26,37,49]:value>=50?[137,161,178]:[45,63,77];
+ return [...(value<0?palette.unknown:value>=50?palette.wall:palette.free)];
 }
