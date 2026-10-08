@@ -11,7 +11,7 @@ from uuid import uuid4
 from did_core.types import Observation, Result, Subgoal
 from .context import Candidate, PlannerConfig, PlanningContext, nonnegative
 from .provider import TextProvider, ProviderError, build_prompt
-from .journal import EventSink, prompt_hash
+from .journal import EventSink, JournalWriteError, prompt_hash
 from .research import HypothesisRegistry
 from .validation import SubgoalValidationError, PlanningUnavailable, UnsafeObservation, parse_subgoal, validate_observation
 
@@ -48,11 +48,16 @@ class ResearchPlanner:
             try:
                 self.journal.write({"session_id": self.session_id, **event})
             except (OSError, ValueError, TypeError):
-                raise RuntimeError("ML journal write failed; stop and restore logging before continuing") from None
+                raise JournalWriteError() from None
 
     def _emit(self, event: dict) -> None:
         self._audit(event)
         self._history.append(event)
+
+    @property
+    def active_hypothesis_ids(self) -> frozenset[str]:
+        """Read-only registry snapshot for backend validation; never invent IDs."""
+        return frozenset(self._research.ids)
 
     def register_hypothesis(self, hypothesis_id: str, statement: str, expected: str, sim_time: float) -> None:
         self._check_research_time(sim_time)

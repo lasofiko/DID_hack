@@ -7,6 +7,12 @@ from typing import Protocol
 from .provider import ProviderError
 
 
+class JournalWriteError(RuntimeError):
+    """Audit storage failure: refuse further execution, never provider fallback."""
+    def __init__(self):
+        super().__init__("ML journal write failed; stop and restore logging before continuing")
+
+
 class EventSink(Protocol):
     def write(self, event: dict) -> None: ...
 
@@ -18,7 +24,10 @@ def prompt_hash(prompt: str) -> str:
 class JsonlJournal:
     def __init__(self, path: Path, *, secrets: tuple[str, ...] = ()):
         self.path = Path(path)
-        self.path.parent.mkdir(parents=True, exist_ok=True)
+        try:
+            self.path.parent.mkdir(parents=True, exist_ok=True)
+        except (OSError, ValueError, TypeError):
+            raise JournalWriteError() from None
         self._secrets = tuple(s for s in secrets if s)
 
     def write(self, event: dict) -> None:
@@ -32,9 +41,12 @@ class JsonlJournal:
             if isinstance(value, list):
                 return [redact(v) for v in value]
             return value
-        line = json.dumps(redact(event), ensure_ascii=False, allow_nan=False)
-        with self.path.open("a", encoding="utf-8") as stream:
-            stream.write(line + "\n")
+        try:
+            line = json.dumps(redact(event), ensure_ascii=False, allow_nan=False)
+            with self.path.open("a", encoding="utf-8") as stream:
+                stream.write(line + "\n")
+        except (OSError, ValueError, TypeError):
+            raise JournalWriteError() from None
 
 
 class ReplayProvider:

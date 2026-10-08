@@ -4,6 +4,7 @@ import os
 import re
 import asyncio
 from contextlib import AsyncExitStack
+from did_ml.journal import JournalWriteError
 
 def load_plugin(variable,methods):
     specification=os.environ.get(variable,'')
@@ -49,6 +50,9 @@ class PlannerRuntime:
                 except Exception as cleanup:
                     self.log('Planner cleanup failed: ' + type(cleanup).__name__)
                 if not isinstance(exc, Exception):
+                    raise
+                if isinstance(exc, JournalWriteError):
+                    self.log('Planner journal unavailable; mission start refused')
                     raise
                 # Factory/provider exceptions may include credentials or URLs.
                 self.log('Planner unavailable; Algorithmic fallback: ' + type(exc).__name__)
