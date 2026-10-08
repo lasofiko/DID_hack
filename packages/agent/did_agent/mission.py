@@ -270,6 +270,8 @@ class MissionManager:
                 await self.navigator.stop()
                 goal = await self.choose(obs,search)
                 if self._state['status'] != 'running':
+                    # A late provider reply must not relabel an operator interruption.
+                    self.planner_source = 'Algorithmic'
                     self._planner_result(False, 'INTERRUPTED')
                     continue
                 # Provider latency may invalidate the sensor snapshot and budgets.
