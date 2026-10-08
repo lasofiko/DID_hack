@@ -3,7 +3,9 @@
 Один агент TurtleBot3 Burger: React/TypeScript → FastAPI → ROS 2 Jazzy →
 Gazebo Harmonic. Headless Gazebo, настоящие odom/lidar/TF, команды TwistStamped;
 сигнал образцов, батарея, сбор и finish — отдельный **локальный mock-судья**.
-Системный ROS/Python macOS не нужны. Работа ведётся в существующей ветке night-mvp.
+Системный ROS/Python macOS не нужны. Интеграционная ветка: feature/system-integration.
+Она объединяет DID LAB, оригинальную EnergyModel Марии и ResearchPlanner Сони.
+[Отчёт этапа 1 и ограничения проверки](docs/integration/STAGE1.md).
 
 ```sh
 # Терминал на Mac, каталог DID_hack. Проверенное ARM64-зеркало Ubuntu:
@@ -19,7 +21,7 @@ Reset пересоздаёт собственный Gazebo/ROS launch и mock-с
 ```sh
 docker compose logs --tail 100
 docker compose exec -T simulation bash docker/entrypoint.sh ros2 topic info /cmd_vel -v
-docker compose exec -T simulation bash docker/entrypoint.sh python3 -m unittest discover -s tests
+docker compose exec -T simulation bash docker/entrypoint.sh python3 -m unittest discover -s tests -t .
 docker compose down
 ```
 
@@ -33,7 +35,8 @@ HARD — 7/4 и приватные изменения стоимости, опа
 Количество в интерфейсе — количество в среде, не обещание полной доставки.
 Safety/батарея могут вызвать ранний возврат; HARD может закончиться безопасным
 отказом при недостоверном датчике. Алгоритмическая и адаптивная стратегии работают
-в одном агенте. Настоящий LLM пока не подключён: предусмотрен ограниченный fallback.
+в одном агенте. Существующий MAI/DeepSeek-клиент соединён с MissionManager через managed factory.
+HTTP-мок проверен; настоящий API и ROS/Gazebo e2e ещё требуют проверки.
 
 [Контракт API](docs/api.md), [подключение Сони](docs/LLM_INTEGRATION.md),
 [подключение Марии](docs/ENERGY_INTEGRATION.md). Их модуль `packages/ml/did_ml`
@@ -41,7 +44,7 @@ Safety/батарея могут вызвать ранний возврат; HAR
 
 ```sh
 # Алгоритмические проверки в уже существующем Python 3.12 окружении:
-.venv/bin/python -m unittest discover -s tests
+.venv/bin/python -m unittest discover -s tests -t .
 .venv/bin/python scripts/check_scenarios.py
 .venv/bin/python scripts/check_ros_package.py
 ```
@@ -50,3 +53,15 @@ Safety/батарея могут вызвать ранний возврат; HAR
 Unit/кинематика и физические Gazebo-прогоны описаны отдельно в
 [документации проверки](docs/validation.md). Запуск на Ubuntu x86-64 предусмотрен
 нативной сборкой того же Dockerfile, но пока не проверен на сервере.
+
+## Проверка интеграции без ROS и внешней модели
+
+    python -m pip install -e ".[ml]"
+    python scripts/test_stage1.py
+    python scripts/test_ml.py
+
+Для Windows перед тестами: PowerShell $env:PYTHONUTF8="1".
+Первый runner явно пропускает полные кинематические миссии.
+Для сборки frontend: cd apps/frontend, npm ci, npm run build.
+Подключение LLM и offline planner: [LLM_INTEGRATION](docs/LLM_INTEGRATION.md).
+Историческая документация dev сохранена в [архиве](docs/integration/preserved-dev/README.md).

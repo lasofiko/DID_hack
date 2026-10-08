@@ -3,7 +3,7 @@
 Из корня в Python 3.12 окружении:
 
 ```sh
-.venv/bin/python -m unittest discover -s tests -v
+.venv/bin/python -m unittest discover -s tests -t . -v
 .venv/bin/python scripts/check_ros_package.py
 .venv/bin/python scripts/check_scenarios.py
 .venv/bin/python scripts/audit_seeds.py
@@ -25,7 +25,7 @@ audit_seeds — отдельная проверка качества доста�
 Для работающего Docker web-стенда:
 
 ```sh
-docker compose exec -T simulation bash docker/entrypoint.sh python3 -m unittest discover -s tests
+docker compose exec -T simulation bash docker/entrypoint.sh python3 -m unittest discover -s tests -t .
 docker compose exec -T simulation bash docker/entrypoint.sh python3 scripts/web_check.py --seed 1 --controls --seconds 650 --output /workspace/output/web-easy-1.json
 ```
 
@@ -36,3 +36,18 @@ web_check **пересоздаёт сессию** и проверяет наст
 
 Полная процедура, отрицательный clock-тест и критерии:
 [validation](../docs/validation.md). Запуск: [QUICK_START](../docs/QUICK_START.md).
+
+## Этап 1: локальная интеграция
+
+python scripts/test_stage1.py объединяет наборы DID LAB, EnergyModel и ML,
+добавляя tests/test_planner_integration.py (реальные классы + fake IO/provider).
+Шесть тестов с полными кинематическими миссиями получают явный SKIP.
+На Windows запускать с $env:PYTHONUTF8="1": CLI результатов печатает Unicode.
+python scripts/test_ml.py отдельно запускает ML, включая HTTP MockTransport.
+При ручном unittest discovery нужен -t ., чтобы tests.test_ml не конфликтовал
+с scripts/test_ml.py. Пропуск отсутствующих зависимостей не является PASS.
+
+Проверяются raw-энергобюджет и разворот, публичный whitelist, reset/result,
+повторная safety/energy-проверка, pause/cancel и сохранение цели при REPLAN.
+Все provider-тесты локальные. Итоговые числа и ограничения:
+[STAGE1](../docs/integration/STAGE1.md).

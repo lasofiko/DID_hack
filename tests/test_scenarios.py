@@ -117,7 +117,7 @@ class PlannerModeTests(unittest.IsolatedAsyncioTestCase):
             async def propose(self,*args):return {'action':'return_to_base','target':None,'reason':'Budget','hypothesis_id':None}
         d.mission.planner=Planner();d.mission.planner_mode='llm'
         goal=await d.mission.choose(d.robot.snapshot(),SampleSearch(d.grid,d.config))
-        self.assertEqual(goal['action'],'return_to_base');self.assertEqual(d.mission.planner_source,'LLM')
+        self.assertEqual(goal['action'],'return_to_base');self.assertEqual(d.mission.planner_source,'Algorithmic')
     async def test_external_planner_error_does_not_leak_secret(self):
         from demo_easy import KinematicDemo
         from did_agent.search import SampleSearch

@@ -9,6 +9,7 @@ import uuid
 from did_core.types import MissionState, StartRequest, Command, Subgoal
 from .battery import BatteryManager, ReturnToBase
 from .search import SampleSearch
+from .planner_bridge import ResearchBridge, ResearchPlanner, public_observation
 
 class RejectedSubgoal(ValueError):
     """Safe validation feedback; external exception messages are never published."""
@@ -23,6 +24,8 @@ class MissionManager:
         self.journal_sink_error=False
         self.scenario=None;self.seed=None
         self.task = None
+        self._research = None
+        self._planner_failed = False
         self.resume_status = 'running'
         self.mode='baseline';self.planner_mode='llm' if planner else 'algorithmic';self.planner_source='Algorithmic'
 
@@ -62,6 +65,11 @@ class MissionManager:
             await self.task
         if self.safety.reason():
             raise RuntimeError(self.safety.reason())
+        self._planner_failed = False
+        self._research = ResearchBridge(self.planner, self.config) if isinstance(self.planner, ResearchPlanner) else None
+        if self._research is not None:
+            self._research.reset()
+        self.planner_source = 'Algorithmic'
         self._state = dict(run_id=uuid.uuid4().hex,status='running',observation=None,goal=None,collected=0,delivered=0)
         self.journal.clear()
         self.navigator.returning = False
@@ -96,6 +104,7 @@ class MissionManager:
             self._state['status'] = self.resume_status
         else:
             self._state['status'] = 'returning' if command == 'return' else 'stopped'
+            self.planner_source = 'Algorithmic'
         if command != 'resume':
             await self.navigator.stop()
         self.log('Command: '+command)
@@ -114,13 +123,41 @@ class MissionManager:
         return isinstance(target,dict) and set(target) == {'x','y'} and all(
             isinstance(v,(int,float)) and not isinstance(v,bool) and math.isfinite(v) for v in target.values())
 
+    def _planner_observe(self, obs):
+        if self._research is not None and not self._planner_failed and obs is not None:
+            try:
+                self._research.observe(obs)
+            except ValueError:
+                # DDS may be ahead of /clock by <=100 ms. Never forge timestamps;
+                # propose will reject such a snapshot and backend safety still applies.
+                pass
+
+    def _planner_result(self, success, code):
+        if self._research is not None and self._research.pending is not None:
+            obs = self.robot.snapshot()
+            if obs is None:
+                # A clock reset/missing snapshot has no valid result timestamp.
+                self._research.reset()
+                return
+            try:
+                self._research.complete(success, code, obs['sim_time'])
+            except Exception as exc:
+                self._planner_failed = True
+                self.log('Planner result unavailable: '+type(exc).__name__)
+
     async def choose(self, obs, search) -> Subgoal:
         feedback = ''
         self.planner_source='Algorithmic'
-        if self.planner is not None and self.planner_mode=='llm':
+        if self.planner is not None and self.planner_mode=='llm' and not self._planner_failed:
+            if isinstance(self.planner, ResearchPlanner) and self._research is None:
+                self._research = ResearchBridge(self.planner, self.config)
             for _ in range(2):
                 try:
-                    goal = await asyncio.wait_for(self.planner.propose(deepcopy(obs),feedback),self.config.planner_timeout)
+                    if self._research is not None:
+                        call = self._research.propose(obs, search, self.navigator, self.robot.yaw, feedback)
+                    else:
+                        call = self.planner.propose(public_observation(obs), feedback)
+                    goal = await asyncio.wait_for(call, self.config.planner_timeout)
                     if not self.valid_goal(goal):
                         raise RejectedSubgoal('Invalid Subgoal')
                     if goal['action'] in ('go_to','explore'):
@@ -128,11 +165,14 @@ class MissionManager:
                         except ValueError as exc:raise RejectedSubgoal('Target unreachable') from exc
                     if goal['action'] == 'collect' and not search.should_collect(obs['pose']):
                         raise RejectedSubgoal('Collect signal unconfirmed')
-                    self.planner_source='LLM'
+                    self.planner_source = self._research.source() if self._research else 'Algorithmic'
                     return goal
                 except Exception as exc:
+                    self._planner_result(False, 'BACKEND_REJECTED')
                     feedback = str(exc) if isinstance(exc,RejectedSubgoal) else type(exc).__name__
                     self.log('Planner rejected: '+feedback)
+                    if self._planner_failed:
+                        break
         if search.should_collect(obs['pose']):
             action, target, reason = 'collect', None, 'Confirmed median signal'
         else:
@@ -176,7 +216,10 @@ class MissionManager:
                 obs = self.robot.snapshot()
                 self.navigator.planner.start_yaw=self.robot.yaw
                 battery.observe(obs)
+                self._planner_observe(obs)
                 if self._state['status'] == 'returning':
+                    if self._research is None or self._research.pending is None:
+                        self.planner_source = 'Algorithmic'
                     self._state['goal'] = dict(action='return_to_base',target=None,reason='Return priority',hypothesis_id=None)
                     if not home.arrived(obs['pose']):
                         self.navigator.returning = True
@@ -194,6 +237,7 @@ class MissionManager:
                         continue
                     if not result['success']:
                         raise RuntimeError('Finish rejected: '+result['message'])
+                    self._planner_result(True, 'RETURN_FINISHED')
                     self._state.update(status='finished',delivered=self._state['collected'])
                     break
                 if self._state['collected'] >= self.goal_samples or steps >= self.config.max_steps:
@@ -201,6 +245,7 @@ class MissionManager:
                     continue
                 # Several distinct sensor packets at a stationary observation point.
                 search.observe(obs)
+                self._planner_observe(obs)
                 old_stamp = obs['signal_time']
                 for _ in range(2):
                     until = time.monotonic()+self.config.data_timeout
@@ -209,6 +254,7 @@ class MissionManager:
                         sample = self.robot.snapshot()
                         if sample and sample['signal_time'] > old_stamp:
                             search.observe(sample)
+                            self._planner_observe(sample)
                             old_stamp = sample['signal_time']
                             break
                 if self._state['status'] != 'running':
@@ -221,8 +267,20 @@ class MissionManager:
                     self._state['status'] = 'returning'
                     self.log('Energy reserve: return')
                     continue
+                await self.navigator.stop()
                 goal = await self.choose(obs,search)
                 if self._state['status'] != 'running':
+                    self._planner_result(False, 'INTERRUPTED')
+                    continue
+                # Provider latency may invalidate the sensor snapshot and budgets.
+                if self.safety.reason():
+                    self._planner_result(False, 'SAFETY_REJECTED')
+                    raise RuntimeError(self.safety.reason())
+                obs = self.robot.snapshot()
+                self.navigator.planner.start_yaw = self.robot.yaw
+                search.observe(obs)
+                if goal['action'] == 'collect' and not search.should_collect(obs['pose']):
+                    self._planner_result(False, 'COLLECT_REJECTED')
                     continue
                 self._state['goal'] = goal
                 self.log('Decision: '+str(goal))
@@ -235,11 +293,13 @@ class MissionManager:
                     search.collected(obs['pose'],result['success'])
                     if result['success']:
                         self._state['collected'] += 1
+                    self._planner_result(result['success'], 'COLLECT_SUCCEEDED' if result['success'] else 'COLLECT_REJECTED')
                     self.log('Collect: '+str(result))
                 else:
                     outgoing = self.navigator.plan(obs['pose'],goal['target'])
                     return_path = home.plan(goal['target'])
                     if not battery.can_explore(obs['battery'],outgoing,return_path):
+                        self._planner_result(False, 'ENERGY_REJECTED')
                         self._state['status'] = 'returning'
                         continue
                     self.navigator.returning = False
@@ -254,6 +314,8 @@ class MissionManager:
                         outgoing=self.navigator.plan(self.robot.snapshot()['pose'],goal['target'])
                     else:
                         result=dict(success=False,message='REPLAN_LIMIT')
+                    self._planner_result(result['success'] and self._state['status']=='running',
+                                         'NAVIGATION_SUCCEEDED' if result['success'] and self._state['status']=='running' else 'NAVIGATION_INTERRUPTED')
                     if self._state['status'] != 'running':
                         continue
                     if not result['success']:
@@ -280,4 +342,5 @@ class MissionManager:
             self.log('Failure: '+str(exc))
         finally:
             await self.navigator.stop()
+            self._planner_result(False, 'MISSION_ENDED')
             self.log('Mission: '+self._state['status'])

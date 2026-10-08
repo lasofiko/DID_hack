@@ -19,7 +19,15 @@ services:
       LP_NUM_THREADS: "4"
       DID_AGENT_JOURNAL_LOG: /workspace/output/agent-journal.jsonl
       DID_JUDGE_PRIVATE_LOG: /workspace/output/private-judge-events.jsonl
-      DID_PLANNER_FACTORY: ${DID_PLANNER_FACTORY:-}
+      DID_PLANNER_FACTORY: ${DID_PLANNER_FACTORY:-did_ml.integration:create_llm_planner}
+      DID_LLM_API_KEY: ${DID_LLM_API_KEY:-}
+      DID_LLM_ENDPOINT: ${DID_LLM_ENDPOINT:-https://api-ai.mai.ru/v1/chat/completions}
+      DID_LLM_MODEL: ${DID_LLM_MODEL:-deepseek-v4.1-flash}
+      DID_LLM_TIMEOUT: ${DID_LLM_TIMEOUT:-5}
+      DID_LLM_MAX_TOKENS: ${DID_LLM_MAX_TOKENS:-512}
+      DID_LLM_JSON_MODE: ${DID_LLM_JSON_MODE:-true}
+      DID_LLM_THINKING: ${DID_LLM_THINKING:-disabled}
+      DID_LLM_JOURNAL_DIR: /workspace/output/ml
       DID_ENERGY_FACTORY: ${DID_ENERGY_FACTORY:-did_ml.factory:create_energy_model}
       RENDER_MODE: ${RENDER_MODE:-egl}
     volumes:

@@ -9,5 +9,5 @@
   "mission_timeout": 900.0, "control_period": 0.05,
   "battery_reserve": 8.0, "energy_per_m": 3.0, "return_factor": 1.5,
   "search_spacing": 0.35, "signal_interest": 0.25, "signal_collect": 0.78,
-  "goal_samples": 3, "max_steps": 180, "planner_timeout": 3.0
+  "goal_samples": 3, "max_steps": 180, "planner_timeout": 12.0
 }

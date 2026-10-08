@@ -38,8 +38,8 @@ watchdog всё равно обнулит устаревшую команду.
 
 LLM подключается через Planner.propose: не более двух попыток с timeout,
 валидация Subgoal, затем алгоритмический fallback. Algorithmic вообще не
-вызывает внешний Planner; LLM отображается как источник только после принятого
-ответа. Реального внешнего клиента пока нет. EnergyObserver подключает модель Марии в обоих режимах; adaptive обновляет
+вызывает внешний Planner; LLM отображается только для принятого ResearchPlanner-ответа с source=provider;
+отсутствие провайдера, ошибки и непроверенный generic Planner дают Algorithmic. MAIProvider сохранён, но offline factory не создаёт сетевого клиента. EnergyObserver подключает модель Марии в обоих режимах; adaptive обновляет
 наблюдаемые локальные стоимости и A*, не получает истинные параметры грунтов.
 Консервативный BatteryManager независимо ограничивает риск расхода энергии.
 
@@ -77,3 +77,23 @@ LLM/EnergyModel команды подключаются factory из did_ml, м�
 Публичные контракты: [API](api.md). Подключение команды:
 [Planner](LLM_INTEGRATION.md), [EnergyModel](ENERGY_INTEGRATION.md).
 Проверки и границы применимости: [validation](validation.md).
+
+## ResearchPlanner в MissionManager
+
+MissionManager распознаёт ResearchPlanner и использует ResearchBridge:
+reset перед новой миссией → observe для разных публичных sensor packets →
+PlanningContext по текущей карте и батарее → propose → повторная проверка →
+record_result. REPLAN сохраняет текущую подцель; пауза/stop/отказ закрывают
+прерванное движение. Возврат подтверждается после finish, а не при выдаче команды.
+
+Контекст строится на отдельном снимке карты и измеренных энергозатрат в worker
+thread. Не более восьми точек из ближайшего покрытия/локальной окрестности;
+timeout ограничивает ожидание. Это ограниченная эвристика, не гарантия покрытия.
+Маршрут туда и домой проверяется A*, поворот на обратный курс учитывается.
+Стоимость передаётся без reserve/factor, которые ResearchPlanner применяет один раз.
+Углы нужны навигатору и оценке стоимости; контракт Observation не расширен.
+
+Папки: apps/frontend — UI; apps/backend — HTTP/WS; packages/agent — исполнитель
+и адаптер; packages/ml — ResearchPlanner, MAIProvider и EnergyModel;
+packages/contracts — общие типы; packages/environment — изолированный судья;
+ros2 — адаптеры робота. Контракты и ограничения: [интеграция](LLM_INTEGRATION.md).

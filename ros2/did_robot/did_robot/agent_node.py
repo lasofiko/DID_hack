@@ -66,11 +66,8 @@ class AgentNode(Node):
         self.mission = MissionManager(self.robot,self.navigator,self,self.config,self.safety)
         self.mission.journal_sink=os.environ.get('DID_AGENT_JOURNAL_LOG')
         from did_agent.plugins import load_plugin
-        for attribute,environment,methods in [('planner','DID_PLANNER_FACTORY',['propose']),('energy_model','DID_ENERGY_FACTORY',['update','update_turn','estimate','estimate_turn','estimate_energy'])]:
-            try:setattr(self.mission,attribute,load_plugin(environment,methods))
-            except Exception as exc:
-                setattr(self.mission,attribute,None)
-                self.get_logger().error('Team plugin unavailable; fallback: '+str(exc))
+        from did_agent.plugins import PlannerRuntime
+        self.planner_runtime = PlannerRuntime(self.get_logger().error)
         from did_ml.factory import make_energy_model
         def energy_factory():
             try:
@@ -233,6 +230,17 @@ class AgentNode(Node):
     async def finish(self):
         return await self.call_service(self.finish_client)
 
+    async def _start_mission(self, request):
+        if self.mission.state()['status'] not in ('idle', 'finished', 'stopped', 'failed'):
+            raise ValueError('Mission already active')
+        # Factory and HTTP client enter on the same loop as propose/cleanup.
+        # Algorithmic mode never initializes a client or reads its credentials.
+        if request['planner_mode'] == 'llm':
+            self.mission.planner = await self.planner_runtime.open()
+        else:
+            self.mission.planner = None
+        return await self.mission.start(request)
+
     def start_service(self,request,response):
         if not self.get_parameter('coordinates_verified').value:
             response.success=False;response.message='Verify Gazebo pose/odom/map, then set coordinates_verified:=true'
@@ -241,9 +249,9 @@ class AgentNode(Node):
             response.success=False;response.message='Start already in progress';return response
         future=None
         try:
-            future=asyncio.run_coroutine_threadsafe(self.mission.start(dict(scenario=self.get_parameter('scenario').value,mode=self.get_parameter('mode').value,
+            future=asyncio.run_coroutine_threadsafe(self._start_mission(dict(scenario=self.get_parameter('scenario').value,mode=self.get_parameter('mode').value,
                                                     seed=self.get_parameter('seed').value,planner_mode=self.get_parameter('planner_mode').value)),self.loop)
-            future.result(timeout=1.0)
+            future.result(timeout=3.0)
             with self.command_lock:
                 self.motion_inhibit=self.safety.emergency or self.mission.state()['status'] not in ('running','returning')
             response.success=True;response.message='Mission started'
@@ -298,13 +306,15 @@ class AgentNode(Node):
                 self.mission.task.cancel()
                 await asyncio.gather(self.mission.task,return_exceptions=True)
             await self.navigator.stop()
+            await self.planner_runtime.close()
         try:
             asyncio.run_coroutine_threadsafe(stop(),self.loop).result(timeout=2)
         finally:
             self.publish_velocity(0.0,0.0)
             self.loop.call_soon_threadsafe(self.loop.stop)
             self.thread.join(timeout=2)
-            self.loop.close()
+            if not self.thread.is_alive():
+                self.loop.close()
 
 
 def main():

@@ -24,7 +24,7 @@ ENV TURTLEBOT3_MODEL=burger \
     LIBGL_ALWAYS_SOFTWARE=1 GALLIUM_DRIVER=llvmpipe LP_NUM_THREADS=4 \
     ROS_DOMAIN_ID=42 PYTHONUNBUFFERED=1
 RUN apt-get update && apt-get install -y --no-install-recommends python3-venv && rm -rf /var/lib/apt/lists/*
-RUN python3 -m venv --system-site-packages /opt/did-web && /opt/did-web/bin/pip install --no-cache-dir fastapi==0.121.3 uvicorn==0.38.0 websockets==15.0.1
+RUN python3 -m venv --system-site-packages /opt/did-web && /opt/did-web/bin/pip install --no-cache-dir fastapi==0.121.3 uvicorn==0.38.0 websockets==15.0.1 httpx==0.28.1 python-dotenv==1.2.1
 ENV PATH="/opt/did-web/bin:${PATH}" DID_RUNTIME=ros DID_HOST=0.0.0.0
 ENV PYTHONPATH="/workspace/DID_hack/apps/backend:/workspace/DID_hack/packages/ml:${PYTHONPATH}"
 WORKDIR /workspace/DID_hack
@@ -38,6 +38,6 @@ COPY docker/ docker/
 COPY tests/ tests/
 COPY experiments/ experiments/
 RUN source /opt/ros/jazzy/setup.bash && \
-    colcon build --base-paths ros2 --packages-select did_robot --event-handlers console_direct+
+    /opt/did-web/bin/python /usr/bin/colcon build --base-paths ros2 --packages-select did_robot --event-handlers console_direct+
 ENTRYPOINT ["/bin/bash", "/workspace/DID_hack/docker/entrypoint.sh"]
 CMD ["python3", "-m", "did_backend.main"]

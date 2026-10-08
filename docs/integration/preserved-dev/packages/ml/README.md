@@ -2,9 +2,7 @@
 
 Реализован `ResearchPlanner`, совместимый с `did_core.ports.Planner`.
 Это алгоритмический планировщик с адаптером DeepSeek через API МАИ;
-собственной обученной модели нет. ResearchBridge соединяет его с MissionManager.
-Предыдущий локальный check_llm показывал source=llm; в этапе 1 сетевой запрос
-не повторялся, сквозная работа с ROS/LLM ещё не проверена.
+собственной обученной модели и интеграции с роботом пока нет. Проверочный запрос с текущими локальными настройками прошёл: source=llm.
 
 ## Запуск сейчас
 
@@ -25,7 +23,7 @@ Demo показывает выбор публичной точки и смену
 | context.py | Достижимые точки, оценки маршрутов, настройки порогов |
 | planner.py | Выбор подцели, память, подтверждение результата, fallback |
 | validation.py | Проверка наблюдений и строгого JSON |
-| provider.py | Интерфейс TextProvider и построение промпта |
+| provider.py | Интерфейс будущей LLM и построение промпта |
 | demo.py | Короткий пример интеграции |
 
 ## Что умеет без модели
@@ -210,21 +208,3 @@ httpx.MockTransport, без ключей и расходования квоты.
 Новые файлы: journal.py (JSONL/replay), research.py (реестр), evaluation.py (приёмка).
 `python scripts/evaluate_ml.py` сохраняет отчёт из 9 синтетических ситуаций;
 `--live` явно включает реальные запросы. Успешный fallback не выдаётся за ответ LLM.
-
-## EnergyModel Марии
-
-energy.py и factory.py перенесены из energy-integration без изменения алгоритма.
-Движение и поворот измеряются отдельно; неизвестная цена поворота не равна нулю.
-[Модель](../../docs/energy.md), [адаптер измерений](../../docs/ENERGY_INTEGRATION.md).
-
-Для MissionManager доступна offline factory did_ml.integration:create_planner.
-Она не читает .env и не создаёт провайдера. ResearchBridge передаёт проверенные
-кандидаты/стоимости и подтверждает исполнение подцелей.
-[Точный порядок подключения](../../docs/LLM_INTEGRATION.md).
-
-## Подключение клиента к ROS
-
-Managed factory did_ml.integration:create_llm_planner использует существующий
-runtime.llm_planner. Вход/выход выполняются на asyncio loop агента.
-Проверено локальным HTTP-моком; реальный API/Gazebo e2e ещё не проверен.
-[Запуск и настройки](../../docs/LLM_INTEGRATION.md).
