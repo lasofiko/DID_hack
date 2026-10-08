@@ -3,6 +3,7 @@ from typing import Protocol
 from .types import (
     Command, CostEstimate, EnergyMeasurement, MissionState,
     Observation, Point, Result, StartRequest, Subgoal,
+    TurnCostEstimate, TurnEnergyMeasurement,
 )
 
 
@@ -13,6 +14,15 @@ class Planner(Protocol):
 class EnergyModel(Protocol):
     def update(self, measurement: EnergyMeasurement) -> None: ...
     def estimate(self, point: Point) -> CostEstimate: ...
+    def update_turn(self, measurement: TurnEnergyMeasurement) -> None: ...
+    def estimate_turn(self, point: Point) -> TurnCostEstimate: ...
+    # One action: distance_m>0 OR angle_rad>0; the inactive value is zero.
+    def estimate_energy(self, point: Point, distance_m: float, angle_rad: float) -> float | None: ...
+
+
+class TurnEnergyModel(Protocol):
+    def update(self, measurement: TurnEnergyMeasurement) -> None: ...
+    def estimate(self, point: Point) -> TurnCostEstimate: ...
 
 
 class Navigator(Protocol):
