@@ -62,17 +62,20 @@ class WaypointNavigator:
             # collinear segments so cell spacing does not create artificial
             # braking/steering at every 5cm point. Keep every actual bend.
             execution=[path[0]]
-            for offset,(a,b,c) in enumerate(zip(path,path[1:],path[2:])):
+            for a,b,c in zip(path,path[1:],path[2:]):
                 ux,uy=b['x']-a['x'],b['y']-a['y']
                 vx,vy=c['x']-b['x'],c['y']-b['y']
-                # The first off-centre odom point is not a real map bend.
-                # Skip its short alignment stub only when the actual segment
-                # to the next centre passes the same supercover safety check.
-                if offset==0 and distance(a,b)<=self.config.goal_tolerance*2 and self.planner.segment_free(a,c):
-                    continue
-                if abs(ux*vy-uy*vx)>1e-10 or ux*vx+uy*vy<0 or distance(execution[-1],b)>=.30:
+                # Distance alone is not a bend. Artificial 30cm waypoints
+                # force centimetre convergence and repeated braking on a
+                # straight corridor, exhausting the wall-clock route budget.
+                if abs(ux*vy-uy*vx)>1e-10 or ux*vx+uy*vy<0:
                     execution.append(b)
             execution.append(path[-1])
+            # Check the whole compressed leg before skipping an off-centre
+            # alignment stub; checking only the next adjacent centre does not
+            # certify a longer segment near obstacles.
+            if len(execution)>2 and distance(execution[0],execution[1])<=self.config.goal_tolerance*2 and self.planner.segment_free(execution[0],execution[2]):
+                del execution[1]
             for index,target in enumerate(execution[1:],start=1):
                 best = math.inf
                 progress_time = time.monotonic()

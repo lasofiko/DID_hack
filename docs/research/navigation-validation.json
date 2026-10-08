@@ -1,0 +1,13 @@
+{
+  "total": 212,
+  "passed": 212,
+  "failed": 0,
+  "skipped": 0,
+  "errors": 0,
+  "elapsed_s": 34.53193020799881,
+  "python": "3.13.13 macOS ARM64; isolated worktree .venv with .[ml]",
+  "failures": [],
+  "error_tests": [],
+  "skipped_tests": [],
+  "scope": "full existing unittest discovery plus navigation regressions; not ROS/Gazebo"
+}
