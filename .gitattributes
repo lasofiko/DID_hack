@@ -1,0 +1,3 @@
+# Preserve the exact upstream map snapshot and its recorded SHA-256 values.
+configs/maps/LICENSE -whitespace
+configs/maps/map.yaml -whitespace

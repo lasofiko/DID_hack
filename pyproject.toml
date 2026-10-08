@@ -5,10 +5,13 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "did-hack"
 version = "0.1.0"
-description = "DID Hack application skeleton"
+description = "DID Hack deterministic EASY agent and ROS adapters"
 requires-python = ">=3.12"
-dependencies = ["fastapi==0.121.3", "uvicorn==0.38.0"]
+dependencies = ["fastapi==0.121.3", "uvicorn==0.38.0", "websockets==15.0.1"]
 
 [tool.setuptools]
 packages = ["did_core", "did_agent", "did_environment", "did_ml", "did_backend"]
 package-dir = {did_core = "packages/contracts/did_core", did_agent = "packages/agent/did_agent", did_environment = "packages/environment/did_environment", did_ml = "packages/ml/did_ml", did_backend = "apps/backend/did_backend"}
+
+[project.optional-dependencies]
+ml = ["httpx==0.28.1", "python-dotenv==1.2.1"]

@@ -66,11 +66,12 @@ class PlannerConfig:
     provider_timeout: float = 5.0
     provider_attempts: int = 2
     history_size: int = 50
+    provider_cooldown: float = 30.0
 
     def __post_init__(self):
         for name in ("reserve", "energy_factor", "max_sensor_age", "collect_threshold",
                      "signal_window", "signal_radius", "collect_cooldown",
-                     "failed_target_cooldown", "provider_timeout"):
+                     "failed_target_cooldown", "provider_timeout", "provider_cooldown"):
             nonnegative(getattr(self, name), name)
         if self.energy_factor < 1 or not 0 < self.collect_threshold <= 1:
             raise ValueError("Invalid energy factor or signal threshold")

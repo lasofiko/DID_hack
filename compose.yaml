@@ -1,0 +1,42 @@
+services:
+  simulation:
+    image: did-hack:jazzy
+    build:
+      context: .
+      args:
+        BASE_IMAGE: ${BASE_IMAGE:-ros:jazzy-ros-base-noble}
+        UBUNTU_MIRROR: ${UBUNTU_MIRROR:-}
+    # Native Docker engine architecture: ARM64 on Apple Silicon, AMD64 on x86 servers.
+    init: true
+    shm_size: 512m
+    cpus: 8
+    mem_limit: 7g
+    environment:
+      ROS_DOMAIN_ID: "42"
+      TURTLEBOT3_MODEL: burger
+      LIBGL_ALWAYS_SOFTWARE: "1"
+      GALLIUM_DRIVER: llvmpipe
+      LP_NUM_THREADS: "4"
+      DID_AGENT_JOURNAL_LOG: /workspace/output/agent-journal.jsonl
+      DID_JUDGE_PRIVATE_LOG: /workspace/output/private-judge-events.jsonl
+      DID_PLANNER_FACTORY: ${DID_PLANNER_FACTORY:-did_ml.integration:create_llm_planner}
+      DID_LLM_API_KEY: ${DID_LLM_API_KEY:-}
+      DID_LLM_ENDPOINT: ${DID_LLM_ENDPOINT:-https://api-ai.mai.ru/v1/chat/completions}
+      DID_LLM_MODEL: ${DID_LLM_MODEL:-deepseek-v4.1-flash}
+      DID_LLM_TIMEOUT: ${DID_LLM_TIMEOUT:-5}
+      DID_LLM_MAX_TOKENS: ${DID_LLM_MAX_TOKENS:-512}
+      DID_LLM_JSON_MODE: ${DID_LLM_JSON_MODE:-true}
+      DID_LLM_THINKING: ${DID_LLM_THINKING:-disabled}
+      DID_LLM_JOURNAL_DIR: /workspace/output/ml
+      DID_ENERGY_FACTORY: ${DID_ENERGY_FACTORY:-did_ml.factory:create_energy_model}
+      RENDER_MODE: ${RENDER_MODE:-egl}
+    volumes:
+      - ./experiments/runs/docker:/workspace/output
+      - ./scripts:/workspace/DID_hack/scripts:ro
+      - gazebo-fuel:/root/.gz/fuel
+    ports:
+      - "127.0.0.1:${DID_PORT:-3000}:8000"
+    command: [python3, -m, did_backend.main]
+    stop_grace_period: 25s
+volumes:
+  gazebo-fuel:

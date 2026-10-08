@@ -1,5 +1,6 @@
 """Общий словарь команды. Только форматы данных, без логики и валидации."""
-from typing import Literal, TypedDict
+from __future__ import annotations
+from typing import Literal, TypedDict, NotRequired
 
 Action = Literal["explore", "go_to", "collect", "return_to_base"]
 Status = Literal["idle", "running", "paused", "returning", "finished", "stopped", "failed"]
@@ -15,6 +16,7 @@ class StartRequest(TypedDict):
     scenario: Literal["easy", "medium", "hard"]
     seed: int
     mode: Literal["baseline", "adaptive"]
+    planner_mode: NotRequired[Literal["algorithmic", "llm"]]
 
 
 class Observation(TypedDict):
@@ -53,7 +55,7 @@ class MissionState(TypedDict):
 class JournalEntry(TypedDict):
     sim_time: float
     hypothesis_id: str
-    stage: Literal["hypothesis", "observation", "conclusion"]
+    stage: Literal["hypothesis", "experiment", "observation", "conclusion", "model_update", "replan"]
     text: str
 
 
@@ -62,8 +64,23 @@ class EnergyMeasurement(TypedDict):
     distance_m: float
     energy_used: float
     turning: bool
+    # Total absolute angular travel in radians, not signed final heading delta.
+    # Required at runtime for turning=True; absent/zero for straight movement.
+    angle_rad: NotRequired[float]
 
 
 class CostEstimate(TypedDict):
     energy_per_m: float
     uncertainty: float | None
+
+
+class TurnEnergyMeasurement(TypedDict):
+    cell: Point
+    distance_m: float  # Zero for an isolated in-place turn.
+    angle_rad: float  # Non-negative sum of absolute heading increments.
+    energy_used: float
+
+
+class TurnCostEstimate(TypedDict):
+    energy_per_rad: float | None  # Unknown until configured or measured.
+    uncertainty: float | None  # Standard deviation, energy/radian.
