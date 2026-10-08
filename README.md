@@ -25,7 +25,8 @@ docker compose down
 
 [Пошаговый запуск на русском](docs/QUICK_START.md),
 [проверки и ограничения](docs/validation.md),
-[архитектура](docs/architecture.md).
+[архитектура](docs/architecture.md),
+[энергетическая модель Марии и правила измерений](docs/ENERGY_INTEGRATION.md).
 
 EASY содержит 3 образца/1 зону; MEDIUM — 5/3, без изменений;
 HARD — 7/4 и приватные изменения стоимости, опасность и сбой сигнала.

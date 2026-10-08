@@ -26,3 +26,6 @@ reports
 .agents
 experiments/runs
 docs/reference
+
+experiments/results
+experiments/test_data

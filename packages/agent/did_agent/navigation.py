@@ -34,6 +34,7 @@ class NavigationPlanner:
         self.origin, self.origin_yaw = dict(origin), origin_yaw
         self.occupied = set(occupied)
         self.costs = dict(costs or {})
+        self.default_cost=1.0;self.default_turn_cost=0.0;self.turn_costs={};self.start_yaw=0.0
         if any(not math.isfinite(v) or v < 1 for v in self.costs.values()):
             raise ValueError('Cell costs must be finite and >= 1')
 
@@ -83,21 +84,26 @@ class NavigationPlanner:
         source, goal = self.cell(start), self.cell(target)
         if not self.free(source) or not self.free(goal):
             raise ValueError('INVALID_TARGET: blocked or outside map')
-        queue = [(0.0, source)]
-        g, previous = {source: 0.0}, {}
-        closed = set()
+        # Heading belongs to the search state: the cheapest arrival at a cell
+        # need not be the cheapest continuation when in-place turns have a cost.
+        lower_move=min(self.default_cost,min(self.costs.values(),default=self.default_cost))
+        lower_turn=min(self.default_turn_cost,min(self.turn_costs.values(),default=self.default_turn_cost))
+        initial=(source,None)
+        queue = [(0.0, 0, initial)];serial=0
+        g, previous = {initial: 0.0}, {}
+        closed = {}
         while queue:
-            _, current = heapq.heappop(queue)
-            if current in closed:
+            _, _, state = heapq.heappop(queue)
+            current,heading=state
+            if g[state]>=closed.get(state,math.inf):
                 continue
             if current == goal:
-                cells = [goal]
-                while cells[-1] != source:
-                    cells.append(previous[cells[-1]])
-                cells.reverse()
+                states = [state]
+                while states[-1] != initial:states.append(previous[states[-1]])
+                cells=[s[0] for s in reversed(states)]
                 # Keep adjacent cell centres; no unsafe line-of-sight shortcut.
                 return [dict(start)] + [self.point(c) for c in cells[1:]] + [dict(target)]
-            closed.add(current)
+            closed[state]=g[state]  # Reopen if a lower-cost arrival is found.
             x, y = current
             for dx, dy in ((1,0),(-1,0),(0,1),(0,-1),(1,1),(1,-1),(-1,1),(-1,-1)):
                 nxt = x+dx, y+dy
@@ -105,11 +111,18 @@ class NavigationPlanner:
                     continue
                 if dx and dy and (not self.free((x+dx, y)) or not self.free((x, y+dy))):
                     continue
-                candidate = g[current] + math.hypot(dx,dy)*self.resolution*(self.costs.get(current,1)+self.costs.get(nxt,1))/2
-                if candidate < g.get(nxt, math.inf):
-                    g[nxt], previous[nxt] = candidate, current
-                    h = math.hypot(nxt[0]-goal[0], nxt[1]-goal[1])*self.resolution
-                    heapq.heappush(queue, (candidate+h, nxt))
+                direction=math.atan2(dy,dx)+self.origin_yaw
+                old_direction=self.start_yaw if heading is None else heading
+                turn=abs(wrap(direction-old_direction))*self.turn_costs.get(current,self.default_turn_cost)
+                candidate = g[state] + turn + math.hypot(dx,dy)*self.resolution*(self.costs.get(current,self.default_cost)+self.costs.get(nxt,self.default_cost))/2
+                next_state=(nxt,direction)
+                if candidate < g.get(next_state, math.inf):
+                    g[next_state], previous[next_state] = candidate, state
+                    h = math.hypot(nxt[0]-goal[0], nxt[1]-goal[1])*self.resolution*lower_move
+                    if nxt!=goal:
+                        bearing=math.atan2(goal[1]-nxt[1],goal[0]-nxt[0])+self.origin_yaw
+                        h+=lower_turn*abs(wrap(bearing-direction))
+                    serial+=1;heapq.heappush(queue, (candidate+h, serial, next_state))
         raise ValueError('No path')
 
     def segment_free(self, start, end):
@@ -145,6 +158,7 @@ class NavigationPlanner:
 class MotionController:
     def __init__(self, config):
         self.config = config
+        self.phase=None
 
     def command(self, pose, yaw, target, tolerance=None):
         d = distance(pose, target)
@@ -154,5 +168,11 @@ class MotionController:
             return 0.0, 0.0
         error = wrap(math.atan2(target['y']-pose['y'], target['x']-pose['x']) - yaw)
         angular = max(-self.config.max_angular, min(self.config.max_angular, 2*error))
-        linear = min(self.config.max_linear, 0.8*d)*max(0.0, math.cos(error)) if abs(error) < 0.35 else 0.0
-        return linear, angular
+        # Hysteresis: finish alignment well inside the moving threshold.
+        # Otherwise tiny bearing changes near a waypoint cause turn/move chatter.
+        threshold=self.config.heading_tolerance*.25 if self.phase=='turn' else self.config.heading_tolerance
+        phase='turn' if abs(error)>threshold else 'move'
+        if self.phase is not None and phase!=self.phase:
+            self.phase=phase;return 0.0,0.0  # Explicit stop at action boundary.
+        self.phase=phase
+        return (0.0,angular) if phase=='turn' else (min(self.config.max_linear,0.8*d),0.0)

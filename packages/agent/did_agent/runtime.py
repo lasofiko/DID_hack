@@ -20,11 +20,17 @@ class WaypointNavigator:
     def plan(self, start: Point, target: Point) -> list[Point]:
         if self.planner is None:
             raise ValueError('Map unavailable')
+        self.planner.start_yaw = self.robot.yaw
         return self.planner.plan(start,target)
+
+    def emit(self, linear, angular):
+        if self.energy:
+            self.energy.note_command(linear,angular,self.robot.clock or 0.)
+        self.publish(linear,angular)
 
     async def stop(self):
         self.generation += 1
-        self.publish(0.0,0.0)
+        self.emit(0.0,0.0)
 
     async def follow(self, path: list[Point]) -> Result:
         self.path=list(path)
@@ -52,7 +58,22 @@ class WaypointNavigator:
                     return dict(success=False,message='INVALID_TARGET')
             except (KeyError,TypeError,ValueError):
                 return dict(success=False,message='INVALID_TARGET')
-            for index,target in enumerate(path[1:],start=1):
+            # Adjacent A* centres describe the safe corridor. Execute long
+            # collinear segments so cell spacing does not create artificial
+            # braking/steering at every 5cm point. Keep every actual bend.
+            execution=[path[0]]
+            for offset,(a,b,c) in enumerate(zip(path,path[1:],path[2:])):
+                ux,uy=b['x']-a['x'],b['y']-a['y']
+                vx,vy=c['x']-b['x'],c['y']-b['y']
+                # The first off-centre odom point is not a real map bend.
+                # Skip its short alignment stub only when the actual segment
+                # to the next centre passes the same supercover safety check.
+                if offset==0 and distance(a,b)<=self.config.goal_tolerance*2 and self.planner.segment_free(a,c):
+                    continue
+                if abs(ux*vy-uy*vx)>1e-10 or ux*vx+uy*vy<0 or distance(execution[-1],b)>=.30:
+                    execution.append(b)
+            execution.append(path[-1])
+            for index,target in enumerate(execution[1:],start=1):
                 best = math.inf
                 progress_time = time.monotonic()
                 while True:
@@ -60,10 +81,29 @@ class WaypointNavigator:
                         return dict(success=False,message='CANCELLED')
                     obs = self.robot.snapshot()
                     reason = self.safety.reason()
+                    if reason=='STALE_DATA':
+                        # Stop immediately; a short DDS/rendering interruption
+                        # may recover. Never move using the old observation.
+                        self.emit(0.0,0.0)
+                        recovery_deadline=min(deadline,time.monotonic()+.5)
+                        if self.energy:self.energy.log('Sensor freshness lost: stopped; bounded wait for valid data')
+                        while reason=='STALE_DATA' and time.monotonic()<recovery_deadline and token==self.generation:
+                            await asyncio.sleep(self.config.control_period)
+                            reason=self.safety.reason()
+                        if token!=self.generation:return dict(success=False,message='CANCELLED')
+                        if reason is None:
+                            progress_time=time.monotonic()
+                            continue  # Re-read every sensor before calculating motion.
                     if reason or obs is None:
                         return dict(success=False,message=reason or 'STALE_DATA')
+                    # Returning has its own established arrival radius. Do not
+                    # time out pursuing ordinary waypoints after reaching base.
+                    # Freshness and safety must pass before reporting arrival.
+                    if self.returning and distance(path[-1],self.config.base)<1e-9 and distance(obs['pose'],self.config.base)<=self.config.base_tolerance:
+                        return dict(success=True,message='SUCCESS')
                     self.battery.observe(obs)
-                    if self.energy and self.energy.observe(obs,self.robot.yaw):
+                    samples,overflow = self.robot.drain_energy_samples()
+                    if self.energy and self.energy.observe(obs,self.robot.yaw,samples,overflow):
                         return dict(success=False,message='REPLAN')
                     if not self.returning and self.planner and time.monotonic() >= next_energy_check:
                         next_energy_check = time.monotonic()+0.5
@@ -78,7 +118,7 @@ class WaypointNavigator:
                     # A broad waypoint tolerance must not skip a corner whose
                     # next segment cuts occupied cells. Converge to this centre
                     # before turning; keep the actual-segment safety check below.
-                    if index < len(path)-1 and not self.planner.segment_free(obs['pose'],path[index+1]):
+                    if index < len(execution)-1:
                         tolerance=min(tolerance,self.planner.resolution*0.2)
                     if remaining <= tolerance:
                         break
@@ -97,8 +137,8 @@ class WaypointNavigator:
                         return dict(success=False,message=reason)
                     if linear > 0 and not self.planner.segment_free(obs['pose'],target):
                         return dict(success=False,message='BLOCKED')
-                    self.publish(linear,angular)
+                    self.emit(linear,angular)
                     await asyncio.sleep(self.config.control_period)
             return dict(success=True,message='SUCCESS')
         finally:
-            self.publish(0.0,0.0)
+            self.emit(0.0,0.0)

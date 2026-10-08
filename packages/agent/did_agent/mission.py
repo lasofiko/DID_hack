@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 from copy import deepcopy
 import math
+import json
 import time
 import uuid
 from did_core.types import MissionState, StartRequest, Command, Subgoal
@@ -18,6 +19,9 @@ class MissionManager:
         self.config, self.safety, self.planner = config, safety, planner
         self._state = dict(run_id=None,status='idle',observation=None,goal=None,collected=0,delivered=0)
         self.journal = []
+        self.journal_sink=None  # Only the real ROS adapter enables persistence.
+        self.journal_sink_error=False
+        self.scenario=None;self.seed=None
         self.task = None
         self.resume_status = 'running'
         self.mode='baseline';self.planner_mode='llm' if planner else 'algorithmic';self.planner_source='Algorithmic'
@@ -31,8 +35,18 @@ class MissionManager:
         obs = self.robot.snapshot()
         if obs:
             text += ' | pose='+str(obs['pose'])+' battery='+format(obs['battery'],'.3f')+' signal='+format(obs['signal'],'.3f')
-        self.journal.append(dict(sim_time=obs['sim_time'] if obs else 0,
-                                 hypothesis_id=hypothesis_id,stage=stage,text=text))
+        entry=dict(sim_time=obs['sim_time'] if obs else 0,
+                   hypothesis_id=hypothesis_id,stage=stage,text=text)
+        self.journal.append(entry)
+        if self.journal_sink and not self.journal_sink_error:
+            try:
+                with open(self.journal_sink,'a',encoding='utf-8') as handle:
+                    handle.write(json.dumps(dict(run_id=self._state['run_id'],scenario=self.scenario,
+                        seed=self.seed,mode=self.mode,**entry),ensure_ascii=False,allow_nan=False)+'\n')
+            except (OSError,ValueError):
+                self.journal_sink_error=True
+                self.journal.append(dict(sim_time=entry['sim_time'],hypothesis_id='',stage='observation',
+                    text='Local journal persistence unavailable; in-memory journal retained'))
         del self.journal[:-1000]
 
     async def start(self, request: StartRequest) -> MissionState:
@@ -52,10 +66,16 @@ class MissionManager:
         self.journal.clear()
         self.navigator.returning = False
         self.navigator.battery = BatteryManager(self.config)
+        self.scenario=request['scenario'];self.seed=request['seed']
         self.mode=request['mode'];self.planner_mode=request.get('planner_mode','llm' if self.planner else 'algorithmic')
         self.goal_samples=self.config.goal_samples if request['scenario']=='easy' else {'medium':5,'hard':7}[request['scenario']]
         from .energy import EnergyObserver
-        self.navigator.energy=EnergyObserver(self.navigator.planner,self.log,getattr(self,'energy_model',None)) if self.mode=='adaptive' else None
+        model=self.energy_factory() if hasattr(self,'energy_factory') else getattr(self,'energy_model',None)
+        self.navigator.energy=EnergyObserver(self.navigator.planner,self.log,model,self.config,adaptive=self.mode=='adaptive')
+        self.navigator.battery.energy=self.navigator.energy
+        self.robot.drain_energy_samples()
+        self.navigator.planner.turn_costs.clear()
+        self.navigator.planner.start_yaw=self.robot.yaw
         self.navigator.planner.costs.clear()
         if self.planner_mode=='llm' and self.planner is None:self.log('LLM unavailable: using Algorithmic fallback')
         self.task = asyncio.create_task(self._run())
@@ -154,6 +174,7 @@ class MissionManager:
                 if reason:
                     raise RuntimeError(reason)
                 obs = self.robot.snapshot()
+                self.navigator.planner.start_yaw=self.robot.yaw
                 battery.observe(obs)
                 if self._state['status'] == 'returning':
                     self._state['goal'] = dict(action='return_to_base',target=None,reason='Return priority',hypothesis_id=None)
@@ -222,7 +243,17 @@ class MissionManager:
                         self._state['status'] = 'returning'
                         continue
                     self.navigator.returning = False
-                    result = await self.navigator.follow(outgoing)
+                    # Learning changes the route, not the search objective.
+                    # Retry this target without spending coverage/search steps.
+                    for attempt in range(20):
+                        result = await self.navigator.follow(outgoing)
+                        if result['message']!='REPLAN' or self._state['status']!='running':break
+                        self.log('Measured cost update: recompute A* route to current target','replan')
+                        if time.monotonic()>=deadline:
+                            result=dict(success=False,message='LOW_RESERVE');break
+                        outgoing=self.navigator.plan(self.robot.snapshot()['pose'],goal['target'])
+                    else:
+                        result=dict(success=False,message='REPLAN_LIMIT')
                     if self._state['status'] != 'running':
                         continue
                     if not result['success']:

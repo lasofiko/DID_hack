@@ -36,6 +36,7 @@ COPY ros2/ ros2/
 COPY scripts/ scripts/
 COPY docker/ docker/
 COPY tests/ tests/
+COPY experiments/ experiments/
 RUN source /opt/ros/jazzy/setup.bash && \
     colcon build --base-paths ros2 --packages-select did_robot --event-handlers console_direct+
 ENTRYPOINT ["/bin/bash", "/workspace/DID_hack/docker/entrypoint.sh"]

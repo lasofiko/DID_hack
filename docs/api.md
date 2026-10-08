@@ -69,3 +69,13 @@ Docker socket и произвольные subprocess-команды через A
 Движение всегда контролирует агент и steady-clock watchdog. Потеря телеметрии
 не создаёт движение в UI: последнее измеренное положение сохраняется.
 Статусы finished с нулевой/неполной доставкой не означают сбор всех образцов.
+
+## Публичная энергетическая телеметрия
+
+В knowledge каждая cell — центр энергетической плитки в map. Поля:
+energy_per_m, uncertainty, energy_per_rad (null до замера), turn_uncertainty,
+move_samples, turn_samples. energy_diagnostics: accepted, rejected (счётчики
+причин), model="Maria EnergyModel", adaptive. Это оценки агента, не значения
+скрытых зон. В baseline они видны, но веса маршрута сохраняют исходные настройки.
+Журнал observation содержит фактические прямые/угловые измерения; model_update
+и replan описывают обучение и повторный расчёт текущей цели.

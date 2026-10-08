@@ -5,6 +5,7 @@ class BatteryManager:
         self.config = config
         self.rate = config.energy_per_m
         self.previous = None
+        self.energy = None
 
     def observe(self, obs):
         if self.previous is not None:
@@ -18,7 +19,12 @@ class BatteryManager:
         self.previous = {'pose':dict(obs['pose']), 'battery':obs['battery']}
 
     def required(self, path):
-        return NavigationPlanner.length(path)*self.rate*self.config.return_factor + self.config.battery_reserve
+        movement=NavigationPlanner.length(path)*self.rate
+        turns=0.
+        if self.energy:
+            estimate,turns=self.energy.predict_components(path)
+            movement=max(movement,estimate)
+        return (movement+turns)*self.config.return_factor + self.config.battery_reserve
 
     def can_explore(self, battery, outgoing, home):
         return battery > self.required(outgoing+home)

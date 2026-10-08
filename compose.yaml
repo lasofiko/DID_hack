@@ -17,9 +17,10 @@ services:
       LIBGL_ALWAYS_SOFTWARE: "1"
       GALLIUM_DRIVER: llvmpipe
       LP_NUM_THREADS: "4"
+      DID_AGENT_JOURNAL_LOG: /workspace/output/agent-journal.jsonl
       DID_JUDGE_PRIVATE_LOG: /workspace/output/private-judge-events.jsonl
       DID_PLANNER_FACTORY: ${DID_PLANNER_FACTORY:-}
-      DID_ENERGY_FACTORY: ${DID_ENERGY_FACTORY:-}
+      DID_ENERGY_FACTORY: ${DID_ENERGY_FACTORY:-did_ml.factory:create_energy_model}
       RENDER_MODE: ${RENDER_MODE:-egl}
     volumes:
       - ./experiments/runs/docker:/workspace/output

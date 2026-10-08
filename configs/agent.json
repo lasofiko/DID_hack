@@ -1,7 +1,7 @@
 {
   "base_x": -2.0, "base_y": -0.5,
   "odom_x": -2.0, "odom_y": -0.5, "odom_yaw": 0.0,
-  "max_linear": 0.18, "max_angular": 0.8,
+  "max_linear": 0.12, "max_angular": 0.4,
   "goal_tolerance": 0.09, "base_tolerance": 0.18,
   "obstacle_distance": 0.28, "robot_clearance": 0.35,
   "data_timeout": 1.0, "motion_timeout": 120.0,

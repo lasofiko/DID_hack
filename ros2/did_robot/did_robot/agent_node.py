@@ -2,6 +2,7 @@
 import asyncio
 import json
 import math
+import os
 from pathlib import Path
 import threading
 import signal
@@ -63,12 +64,23 @@ class AgentNode(Node):
         self.collect_client = self.create_client(Trigger,'/did/collect',callback_group=self.group)
         self.finish_client = self.create_client(Trigger,'/did/finish',callback_group=self.group)
         self.mission = MissionManager(self.robot,self.navigator,self,self.config,self.safety)
+        self.mission.journal_sink=os.environ.get('DID_AGENT_JOURNAL_LOG')
         from did_agent.plugins import load_plugin
-        for attribute,environment,methods in [('planner','DID_PLANNER_FACTORY',['propose']),('energy_model','DID_ENERGY_FACTORY',['update','estimate'])]:
+        for attribute,environment,methods in [('planner','DID_PLANNER_FACTORY',['propose']),('energy_model','DID_ENERGY_FACTORY',['update','update_turn','estimate','estimate_turn','estimate_energy'])]:
             try:setattr(self.mission,attribute,load_plugin(environment,methods))
             except Exception as exc:
                 setattr(self.mission,attribute,None)
                 self.get_logger().error('Team plugin unavailable; fallback: '+str(exc))
+        from did_ml.factory import make_energy_model
+        def energy_factory():
+            try:
+                if os.environ.get('DID_ENERGY_FACTORY','') in ('','did_ml.factory:create_energy_model'):
+                    return make_energy_model(self.config)
+                return load_plugin('DID_ENERGY_FACTORY',['update','update_turn','estimate','estimate_turn','estimate_energy']) or make_energy_model(self.config)
+            except Exception:
+                self.get_logger().error('Energy factory unavailable; using Maria EnergyModel')
+                return make_energy_model(self.config)
+        self.mission.energy_factory=energy_factory
         self.knowledge_publisher=self.create_publisher(String,'/did/agent/knowledge',10)
         self.loop = asyncio.new_event_loop()
         self.thread = threading.Thread(target=self.loop.run_forever,daemon=True)
@@ -167,6 +179,8 @@ class AgentNode(Node):
     def set_velocity(self,linear,angular):
         if not all(isinstance(v,(int,float)) and not isinstance(v,bool) and math.isfinite(v) for v in (linear,angular)):
             linear=angular=0.0
+        if linear and angular:
+            linear=angular=0.0
         with self.command_lock:
             self.last_command=(linear,angular)
             self.command_time=time.monotonic()
@@ -174,6 +188,11 @@ class AgentNode(Node):
                 self.publish_velocity(0.0,0.0)
 
     def publish_velocity(self,linear,angular):
+        if linear and angular:
+            linear=angular=0.0
+        energy=getattr(getattr(self,'navigator',None),'energy',None)
+        if energy:
+            energy.note_command(linear,angular,self.robot.clock or 0.)
         message=TwistStamped()
         message.header.stamp=self.get_clock().now().to_msg()
         message.header.frame_id='base_link'
@@ -258,7 +277,8 @@ class AgentNode(Node):
         self.state_publisher.publish(String(data=json.dumps(state,allow_nan=False)))
         self.journal_publisher.publish(String(data=json.dumps(self.mission.journal[-50:],allow_nan=False)))
         self.knowledge_publisher.publish(String(data=json.dumps(dict(path=list(self.navigator.path),
-            costs=self.navigator.energy.public() if self.navigator.energy else [],planner_source=self.mission.planner_source),allow_nan=False)))
+            costs=self.navigator.energy.public() if self.navigator.energy else [],
+            energy_diagnostics=self.navigator.energy.diagnostics() if self.navigator.energy else None,planner_source=self.mission.planner_source),allow_nan=False)))
         if state['status'] != self.last_status:
             self.get_logger().info('[MISSION] state='+state['status'])
             self.last_status=state['status']

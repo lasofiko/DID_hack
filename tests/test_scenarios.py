@@ -7,7 +7,7 @@ sys.path.insert(0,str(Path(__file__).resolve().parents[1]/'scripts'))
 import bootstrap
 from did_agent import AgentConfig,NavigationPlanner
 from did_environment.mock_judge import MockJudge
-from did_agent.energy import EnergyObserver,ObservedEnergyModel
+from did_agent.energy import EnergyObserver
 from did_backend.runtime import PublicCache
 
 class ScenarioTests(unittest.TestCase):
@@ -43,40 +43,41 @@ class EnergyTests(unittest.TestCase):
     def setUp(self):
         self.grid=NavigationPlanner.from_occupancy(40,40,.1,{'x':-2.,'y':-2.},[0]*1600,0)
         self.logs=[];self.e=EnergyObserver(self.grid,lambda *args:self.logs.append(args))
-    def obs(self,x,b):return {'pose':{'x':x,'y':.1},'battery':b}
+    def feed(self,e,x,b,t,yaw=0):
+        return e.observe({'pose':{'x':x,'y':.1},'battery':b,'sim_time':t},yaw)
+    def move(self,e,rate=2.,x=.02):
+        e.note_command(.1,0,0)
+        self.feed(e,x,60,.2)
+        changed=False
+        for i in range(1,11):
+            changed=self.feed(e,x+i*.01,60-rate*i*.01,.2+i*.1) or changed
+        return changed
     def test_experiment_is_announced_before_motion_and_matches_observation(self):
-        self.e.observe(self.obs(0,60),0)
+        self.e.note_command(.1,0,0)
         self.assertEqual([e[1] for e in self.logs],['hypothesis','experiment'])
-        interval=self.logs[0][2]
-        self.assertEqual(self.e.public(),[])
-        self.e.observe(self.obs(.1,59.8),0)
-        self.assertFalse(any(e[1]=='observation' for e in self.logs))
-        self.e.observe(self.obs(.3,59.4),0)
-        self.assertEqual([e[1] for e in self.logs if e[2]==interval],
-                         ['hypothesis','experiment','observation','conclusion','model_update'])
-        self.assertNotEqual(self.logs[-1][2],interval)
+        self.move(self.e)
+        self.assertTrue({'observation','conclusion','model_update'} <= {e[1] for e in self.logs})
+        self.assertTrue(all(e[2]==self.logs[0][2] for e in self.logs))
     def test_measure_update_replan_and_no_turn_contamination(self):
-        self.e.observe(self.obs(0,60),0);self.assertTrue(self.e.observe(self.obs(.3,59.4),0))
+        self.assertTrue(self.move(self.e))
         self.assertTrue(self.grid.costs);self.assertAlmostEqual(self.e.public()[0]['energy_per_m'],2)
-        self.assertTrue({'hypothesis','experiment','observation','conclusion','model_update'} <= {e[1] for e in self.logs})
-        values=self.e.public();self.e.observe(self.obs(.6,58),1);self.assertEqual(values,self.e.public())
+        values=self.e.public();self.feed(self.e,.13,58,1.3,.2)
+        self.assertEqual(values,self.e.public())
     def test_conservation_energy_model_contract(self):
-        class Model:
-            measurements=[]
-            def update(self,m):self.measurements.append(m)
-            def estimate(self,p):return {'energy_per_m':2.,'uncertainty':.1}
-        m=Model();e=EnergyObserver(self.grid,lambda *args:None,m)
-        e.observe(self.obs(.4,60),0);e.observe(self.obs(.8,59.2),0)
-        self.assertAlmostEqual(sum(p['distance_m'] for p in m.measurements),.4)
-        self.assertAlmostEqual(sum(p['energy_used'] for p in m.measurements),.8)
-        self.assertTrue(all(not p['turning'] for p in m.measurements))
+        self.move(self.e)
+        m=self.e.last_measurement
+        self.assertAlmostEqual(m['energy_used'],2*m['distance_m'])
+        self.assertEqual(self.e.accepted,1)
+        self.assertFalse(m['turning'])
     def test_external_model_failure_keeps_safe_model(self):
         class Bad:
             def update(self,m):raise ValueError('bad model')
-        e=EnergyObserver(self.grid,lambda *args:None,Bad());e.observe(self.obs(0,60),0)
-        self.assertFalse(e.observe(self.obs(.3,59),0));self.assertEqual(e.public(),[])
+        e=EnergyObserver(self.grid,lambda *args:None,Bad())
+        self.assertFalse(self.move(e));self.assertEqual(e.public(),[])
+        self.assertEqual(e.rejected.get('model_failure'),1)
     def test_changed_rate_is_detected(self):
-        self.e.observe(self.obs(.01,60),0);self.e.observe(self.obs(.23,59.78),0);self.e.observe(self.obs(.45,58.90),0)
+        self.move(self.e,1.)
+        for i in range(1,11):self.feed(self.e,.12+i*.01,59.90-4*i*.01,1.2+i*.1)
         self.assertTrue(any(e[1]=='hypothesis' and 'stale' in e[0] for e in self.logs))
     def test_astar_avoids_measured_high_cost(self):
         start={'x':-.8,'y':0.};goal={'x':.8,'y':0.}

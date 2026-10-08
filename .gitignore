@@ -31,3 +31,7 @@ dist/
 reports/
 
 .DS_Store
+
+# Local experiment registration (real and synthetic datasets stay separate)
+experiments/results/
+experiments/test_data/

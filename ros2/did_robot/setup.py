@@ -3,9 +3,10 @@ from glob import glob
 
 setup(
     name='did_robot',version='0.1.0',
-    packages=['did_robot','did_agent','did_core','did_environment'],
+    packages=['did_robot','did_agent','did_core','did_environment','did_ml'],
     package_dir={'did_robot':'did_robot','did_agent':'../../packages/agent/did_agent',
-                 'did_core':'../../packages/contracts/did_core','did_environment':'../../packages/environment/did_environment'},
+                 'did_core':'../../packages/contracts/did_core','did_environment':'../../packages/environment/did_environment',
+                 'did_ml':'../../packages/ml/did_ml'},
     data_files=[('share/ament_index/resource_index/packages',['resource/did_robot']),
                 ('share/did_robot',['package.xml']),
                 ('share/did_robot/launch',glob('launch/*.launch.py')),

@@ -40,11 +40,17 @@ class AdapterTests(unittest.TestCase):
         return node
 
     def test_twiststamped_type_stamp_frame_and_values(self):
-        node=self.node();node.publish_velocity(.1,-.2)
+        node=self.node();node.publish_velocity(.1,0)
         msg=self.messages[-1]
         self.assertIsInstance(msg,FakeTwistStamped)
         self.assertEqual(msg.header.stamp,'sim_stamp');self.assertEqual(msg.header.frame_id,'base_link')
-        self.assertEqual(msg.twist.linear.x,.1);self.assertEqual(msg.twist.angular.z,-.2)
+        self.assertEqual(msg.twist.linear.x,.1);self.assertEqual(msg.twist.angular.z,0)
+        node.publish_velocity(0,-.2)
+        self.assertEqual(self.messages[-1].twist.angular.z,-.2)
+        node.set_velocity(.1,-.2)
+        self.assertEqual(node.last_command,(0,0))
+        node.publish_velocity(.1,-.2)
+        self.assertEqual(self.messages[-1].twist.linear.x,0)
         node.publish_velocity(0,0)
         self.assertIsInstance(self.messages[-1].twist.linear.x,float)
         self.assertIsInstance(self.messages[-1].twist.angular.z,float)

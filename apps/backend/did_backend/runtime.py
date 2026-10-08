@@ -18,6 +18,7 @@ class PublicCache:
         with self.lock:
             self.state=dict(run_id=None,status='idle',observation=None,goal=None,collected=0,delivered=0)
             self.pose=None;self.yaw=0.;self.trajectory=[];self.path=[];self.costs=[];self.journal=[]
+            self.energy_diagnostics=None
             self.planner_source='Algorithmic';self.map=None;self.score={};self.receipts={};self.clock=None
             self.events=[];self.collected_positions=[];self.last_count=0;self.seen=set();self.error=None
     def record(self,kind):self.receipts[kind]=time.monotonic()
@@ -44,7 +45,15 @@ class PublicCache:
                     if not isinstance(e,dict) or not point(e.get('cell')) or not number(e.get('energy_per_m')) or not 0<=e['energy_per_m']<=30:continue
                     u=e.get('uncertainty')
                     if u is not None and (not number(u) or u<0):continue
-                    self.costs.append({k:e.get(k) for k in ('cell','energy_per_m','uncertainty')})
+                    turn=e.get('energy_per_rad');tu=e.get('turn_uncertainty')
+                    if turn is not None and (not number(turn) or not 0<=turn<=30):continue
+                    if tu is not None and (not number(tu) or tu<0):continue
+                    if any(not isinstance(e.get(k,0),int) or isinstance(e.get(k,0),bool) or e.get(k,0)<0 for k in ('move_samples','turn_samples')):continue
+                    self.costs.append({k:e.get(k) for k in ('cell','energy_per_m','uncertainty','energy_per_rad','turn_uncertainty','move_samples','turn_samples')})
+                d=value.get('energy_diagnostics')
+                if isinstance(d,dict) and isinstance(d.get('accepted'),int) and not isinstance(d['accepted'],bool) and d['accepted']>=0:
+                    rejected={k:v for k,v in (d.get('rejected') if isinstance(d.get('rejected'),dict) else {}).items() if k in ('odom_gap','odom_jump','battery_gap','sensor_skew','cell_crossing','battery_reset','mixed_motion','rate_limit','model_failure','model_rejected','queue_overflow') and isinstance(v,int) and not isinstance(v,bool) and v>=0}
+                    self.energy_diagnostics=dict(accepted=d['accepted'],rejected=rejected,model='Maria EnergyModel',adaptive=d.get('adaptive') is True)
                 self.planner_source='LLM' if value.get('planner_source')=='LLM' else 'Algorithmic'
             elif kind=='event' and isinstance(value,dict):
                 kind_name=value.get('type',value.get('event'))
@@ -68,7 +77,7 @@ class PublicCache:
             online=all(time.monotonic()-self.receipts.get(k,0)<2 for k in ('odom','scan','clock','state')) and self.map is not None
             value=dict(connection='online' if online else ('error' if self.error else 'connecting'),session=session or DEFAULT_SESSION,
                        state=self.state,robot_pose=self.pose,robot_yaw=self.yaw,trajectory=self.trajectory,planned_path=self.path,
-                       knowledge=self.costs,journal=self.journal[-150:],planner_source=self.planner_source,
+                       knowledge=self.costs,energy_diagnostics=self.energy_diagnostics,journal=self.journal[-150:],planner_source=self.planner_source,
                        collected_positions=self.collected_positions,events=self.events,score=self.score,map_revision=self.map['revision'] if self.map else 0,error=self.error)
             value.update(self.state)  # Existing WS MissionState fields remain available.
             return copy.deepcopy(value)
@@ -171,7 +180,10 @@ class RosRuntime:
             return self.snapshot()
     async def trigger_call(self,name):
         client=self.clients[name]
-        if not client.service_is_ready():raise RuntimeError('ROS service unavailable: '+name)
+        discovery_deadline=time.monotonic()+5
+        while not client.service_is_ready():
+            if time.monotonic()>=discovery_deadline:raise RuntimeError('ROS service unavailable: '+name)
+            await asyncio.sleep(.05)
         f=client.call_async(self.trigger.Request());deadline=time.monotonic()+5
         try:
             while not f.done():

@@ -32,6 +32,15 @@ class AgentConfig:
     goal_samples: int = 1
     max_steps: int = 180
     planner_timeout: float = 3.0
+    energy_per_rad: float = 0.25  # Conservative unknown-turn planning reserve, not calibration.
+    energy_cell_size: float = 0.5
+    energy_min_distance: float = 0.08
+    energy_min_angle: float = 0.15
+    energy_max_skew: float = 0.10
+    energy_settle_time: float = 0.20
+    turn_translation_tolerance: float = 0.01
+    straight_angle_tolerance: float = 0.02
+    heading_tolerance: float = 0.04
 
     def __post_init__(self):
         for f in fields(self):

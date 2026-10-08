@@ -4,6 +4,7 @@ import math
 import threading
 import time
 from copy import deepcopy
+from collections import deque
 
 class RobotState:
     def __init__(self, obstacle_distance=0.28):
@@ -18,6 +19,8 @@ class RobotState:
         self.clock = None
         self.clock_received = None
         self.clock_valid = True
+        self.energy_samples = deque(maxlen=2048)
+        self.energy_overflow = False
 
     def update_clock(self, sim_time, wall=None):
         wall = time.monotonic() if wall is None else wall
@@ -28,6 +31,8 @@ class RobotState:
                 self.values.clear()
                 self.received.clear()
                 self.clock_valid = False  # Requires node restart after time reset.
+                self.energy_samples.clear()
+                self.energy_overflow = True
             if self.clock is None or sim_time != self.clock:
                 self.clock_received = wall
             self.clock = sim_time
@@ -61,7 +66,16 @@ class RobotState:
                 self.yaw = yaw
             if kind == 'scan':
                 self.front_distance, self.nearest_distance = value, nearest
+            if kind in ('pose','battery'):
+                if len(self.energy_samples)==self.energy_samples.maxlen:self.energy_overflow=True
+                self.energy_samples.append((kind,deepcopy(value),stamp,yaw))
         return True
+
+    def drain_energy_samples(self):
+        with self.lock:
+            samples=list(self.energy_samples);overflow=self.energy_overflow
+            self.energy_samples.clear();self.energy_overflow=False
+            return samples,overflow
 
     def snapshot(self):
         with self.lock:
