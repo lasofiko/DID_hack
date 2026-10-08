@@ -69,3 +69,18 @@ LLM-провайдера. Остальные части остаются ске�
 python scripts/demo_ml.py
 python scripts/test_ml.py
 ```
+
+## DeepSeek через API МАИ
+
+Добавлен асинхронный адаптер `deepseek-v4.1-flash`. Установка:
+`python -m pip install -e ".[ml]"`. Настройки и новый ключ — в локальном `.env`
+по `.env.example`. Проверочный запрос: `python scripts/check_llm.py`.
+Подробности и непроверенные параметры шлюза: [ML README](packages/ml/README.md).
+Проверочный живой запрос с локальными настройками прошёл (source=llm). Автотесты используют подставной HTTP.
+
+
+## Передача ML команде
+
+[Инструкция для Искандера и Марии](docs/ml-handoff.md): API модуля, журнал,
+гипотезы, replay и границы ответственности. Приёмка: `python scripts/evaluate_ml.py`.
+Реальные запросы включаются отдельно флагом `--live`.

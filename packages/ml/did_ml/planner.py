@@ -5,17 +5,23 @@ from copy import deepcopy
 from dataclasses import asdict
 from math import hypot
 from statistics import median
+from time import monotonic
+from uuid import uuid4
 
 from did_core.types import Observation, Result, Subgoal
 from .context import Candidate, PlannerConfig, PlanningContext, nonnegative
-from .provider import TextProvider, build_prompt
-from .validation import PlanningUnavailable, UnsafeObservation, parse_subgoal, validate_observation
+from .provider import TextProvider, ProviderError, build_prompt
+from .journal import EventSink, prompt_hash
+from .research import HypothesisRegistry
+from .validation import SubgoalValidationError, PlanningUnavailable, UnsafeObservation, parse_subgoal, validate_observation
 
 
 class ResearchPlanner:
-    def __init__(self, config: PlannerConfig | None = None, provider: TextProvider | None = None):
+    def __init__(self, config: PlannerConfig | None = None, provider: TextProvider | None = None,
+                 *, journal: EventSink | None = None):
         self.config = config or PlannerConfig()
         self.provider = provider
+        self.journal = journal
         self._lock = asyncio.Lock()
         self.reset()
 
@@ -32,6 +38,37 @@ class ResearchPlanner:
         self._blocked_until = {}
         self._last_collect = float("-inf")
         self._last_result_time = 0.0
+        self._provider_resume_at = 0.0
+        self._research = HypothesisRegistry()
+        self.session_id = uuid4().hex
+        self._audit({"kind": "session", "config": asdict(self.config), "schema_version": 1})
+
+    def _audit(self, event: dict) -> None:
+        if self.journal is not None:
+            try:
+                self.journal.write({"session_id": self.session_id, **event})
+            except (OSError, ValueError, TypeError):
+                raise RuntimeError("ML journal write failed; stop and restore logging before continuing") from None
+
+    def _emit(self, event: dict) -> None:
+        self._audit(event)
+        self._history.append(event)
+
+    def register_hypothesis(self, hypothesis_id: str, statement: str, expected: str, sim_time: float) -> None:
+        self._check_research_time(sim_time)
+        entry = self._research.register(hypothesis_id, statement, expected, sim_time)
+        self._emit({"kind": "research", **entry})
+
+    def conclude_hypothesis(self, hypothesis_id: str, evidence: str, conclusion: str, sim_time: float) -> None:
+        self._check_research_time(sim_time)
+        for entry in self._research.conclude(hypothesis_id, evidence, conclusion, sim_time):
+            self._emit({"kind": "research", **entry})
+
+    def _check_research_time(self, sim_time: float) -> None:
+        if self._lock.locked() or self._pending is not None:
+            raise PlanningUnavailable("Research updates require no outstanding proposal")
+        if self._latest is None or sim_time != self._latest["sim_time"]:
+            raise ValueError("Feed the current observation before updating research")
 
     def set_context(self, context: PlanningContext) -> None:
         """Costs must include reachable outbound and home paths, in energy units."""
@@ -90,7 +127,7 @@ class ResearchPlanner:
             for cache in (self._visits, self._blocked_until):
                 while len(cache) > self.config.history_size * 10:
                     del cache[next(iter(cache))]
-        self._history.append({"kind": "result", "sim_time": sim_time,
+        self._emit({"kind": "result", "sim_time": sim_time,
                               "goal": deepcopy(goal), "success": result["success"],
                               "message": result["message"][:1000]})
         self._last_result_time = sim_time
@@ -147,30 +184,50 @@ class ResearchPlanner:
                 raise PlanningUnavailable("Obstacle ahead: backend must stop and replan")
             if return_required or (not eligible and not collect):
                 goal = self._goal("return_to_base", "Возврат: резерв энергии или нет допустимых целей")
-            elif self.provider is not None:
+            elif self.provider is not None and monotonic() >= self._provider_resume_at:
                 public = {"mission": ctx.mission, "observation": obs,
                           "candidates": [asdict(c) for c in eligible],
                           "home_energy": ctx.home_energy, "reserve": self.config.reserve,
                           "energy_factor": self.config.energy_factor,
                           "collect_allowed": collect, "return_required": False,
-                          "history": self.history[-10:], "feedback": feedback}
+                          "history": self.history[-10:], "feedback": feedback,
+                          "hypotheses": self._research.active}
                 for _ in range(self.config.provider_attempts):
+                    stage = "provider_request"
                     try:
-                        raw = await asyncio.wait_for(self.provider.complete(build_prompt(public)),
+                        prompt = build_prompt(public)
+                        started = monotonic()
+                        raw = await asyncio.wait_for(self.provider.complete(prompt),
                                                      timeout=self.config.provider_timeout)
-                        proposed = parse_subgoal(raw)
+                        self._audit({"kind": "llm_exchange", "sim_time": obs["sim_time"],
+                                     "prompt": prompt, "prompt_sha256": prompt_hash(prompt),
+                                     "response": raw, "duration_s": round(monotonic() - started, 6)})
+                        stage = "subgoal_validation"
+                        proposed = parse_subgoal(raw, self._research.ids)
                         if proposed["action"] in ("explore", "go_to"):
                             if not any(proposed["target"] == {"x": c.x, "y": c.y} for c in eligible):
-                                raise ValueError("Target is not an eligible candidate")
+                                raise SubgoalValidationError("Target is not an eligible candidate")
                         elif proposed["action"] == "collect" and not collect:
-                            raise ValueError("No stable signal evidence for collection")
+                            raise SubgoalValidationError("No stable signal evidence for collection")
                         goal, source = proposed, "provider"
                         break
                     except (ValueError, TimeoutError, ConnectionError, OSError) as exc:
                         # Do not retain exception text: provider errors may contain secrets.
                         public["feedback"] = "Response rejected. Use the schema and eligible candidates; " + type(exc).__name__
-                        self._history.append({"kind": "provider_error", "sim_time": obs["sim_time"],
-                                              "error_type": type(exc).__name__})
+                        error = {"kind": "provider_error", "sim_time": obs["sim_time"],
+                                 "error_type": type(exc).__name__, "stage": stage}
+                        if isinstance(exc, SubgoalValidationError):
+                            error["reason"] = str(exc)
+                            public["feedback"] = str(exc)
+                        if isinstance(exc, ProviderError):
+                            error.update(code=exc.code, status_code=exc.status_code)
+                        self._emit(error)
+                        if getattr(exc, "retryable", True) is False:
+                            break
+                if goal is None:
+                    self._provider_resume_at = monotonic() + self.config.provider_cooldown
+            elif self.provider is not None:
+                self._emit({"kind": "provider_cooldown", "sim_time": obs["sim_time"]})
             if goal is None:
                 if collect:
                     goal = self._goal("collect", "Несколько свежих измерений подтверждают высокий сигнал")
@@ -180,6 +237,8 @@ class ResearchPlanner:
                     goal = self._goal("explore", "Достижимая точка с приоритетом информации, цены и предыдущих посещений", best)
             candidate_id = next((c.id for c in eligible if goal["target"] == {"x": c.x, "y": c.y}), None)
             self._pending = (deepcopy(goal), candidate_id)
-            self._history.append({"kind": "proposal", "sim_time": obs["sim_time"],
-                                  "source": source, "goal": deepcopy(goal)})
+            self._emit({"kind": "proposal", "sim_time": obs["sim_time"],
+                        "source": source, "goal": deepcopy(goal)})
+            self._audit({"kind": "decision_context", "sim_time": obs["sim_time"],
+                         "observation": obs, "navigation": asdict(ctx)})
             return deepcopy(goal)
