@@ -241,3 +241,25 @@ Frontend tests/build не повторялись: 22 PASS и production build у
 сериализации receipt: сырой журнал сохранён, backend подтвердил stopped.
 Этот observer не считается успешным LLM/физическим Stop-доказательством.
 Все экспериментальные harness и логи остаются ignored. Main и PR #5 не меняются.
+
+## Обновление Git после нового распоряжения, 9 октября 2026
+
+Пользователь изменил порядок приёмки и явно потребовал fast-forward dev после
+критических Python/frontend-проверок. Dev обновлена обычным fast-forward/push
+до d14c685; Navigation, EnergyModel, финальная LLM, Frontend и DEMO-профиль
+сохранены. Дополнительно публикуется коммит плана экспериментов и этой записи.
+Критические проверки: 100/100 Python PASS, 22/22 frontend PASS, без skip/fail.
+Ошибок Git merge и diff --check нет. Эти результаты не закрывают описанные выше
+физические/LLM release gates: готовность полного релиза остаётся NOT READY.
+Ранее запланированный Draft PR не был создан коннектором (HTTP403); дальнейшее
+обновление dev выполнено напрямую по новому явному указанию, без merge в main.
+
+Удалены только remote-ветки feature/maria, feature/llm-integration,
+feature/llm-validation, feature/mission-dashboard, night-mvp и
+integration/final-did-hack после проверки ancestry и актуальных remote SHA.
+Локальные ветки/worktree сохранены. Незакоммиченный map.yaml основной копии
+оставлен побайтно неизменным и сохранён отдельным patch; неправильный ключ
+«вщслукimage» вместо image остаётся локальной проблемой, в dev он не включён.
+Полная матрица НЕ запускалась; план — FULL_EXPERIMENT_PLAN.md и
+experiments/plans/final-matrix.json. Перед тестированием необходим научный образ
+на актуальном source SHA: нынешний DEMO-overlay не заменяет его проверку.

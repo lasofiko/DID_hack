@@ -1,0 +1,788 @@
+{
+  "schema_version": 1,
+  "status": "PLANNED_NOT_EXECUTED",
+  "runtime_source_revision": "d14c685c8c613ce61cdba450017dd7f9bc712d1c",
+  "file_sha256": {
+    "configs/agent.json": "c65be55ad0ab151c8b86a98ae413b9f67f80eb0b1829bf6fcae0d8848bf9b44c",
+    "configs/maps/map.yaml": "964566f958dbee800d2e9961cb438476218526f4363b5fe550b9ea962efe584b",
+    "configs/maps/map.pgm": "57eaad9291fcf02e068cbcd1874990694838a74a3304755bae1bd7b726c4522f",
+    "packages/agent/did_agent/navigation.py": "933a8024318f6dfefe85def1a0a28f3dea8d9a3d3d6c003dcb86f2ac8c7490b2",
+    "packages/agent/did_agent/mission.py": "b74cf9d173a2b2f1d6b693eb33bb4661708d1a6a275354c57e934f9204324da9",
+    "packages/ml/did_ml/energy.py": "da4767c0f76d62394e2c68796530b7b56bbd90c8c1f6e6e3101eb3def23b3477"
+  },
+  "scientific_config": {
+    "base_x": -2.0,
+    "base_y": -0.5,
+    "odom_x": -2.0,
+    "odom_y": -0.5,
+    "odom_yaw": 0.0,
+    "max_linear": 0.12,
+    "max_angular": 0.4,
+    "goal_tolerance": 0.09,
+    "base_tolerance": 0.18,
+    "obstacle_distance": 0.28,
+    "robot_clearance": 0.35,
+    "data_timeout": 1.0,
+    "motion_timeout": 120.0,
+    "stuck_timeout": 12.0,
+    "service_timeout": 5.0,
+    "mission_timeout": 900.0,
+    "control_period": 0.05,
+    "battery_reserve": 8.0,
+    "energy_per_m": 3.0,
+    "return_factor": 1.5,
+    "search_spacing": 0.35,
+    "signal_interest": 0.25,
+    "signal_collect": 0.78,
+    "goal_samples": 3,
+    "max_steps": 180,
+    "planner_timeout": 12.0
+  },
+  "demo_profile": false,
+  "initial_battery": 60,
+  "mission_timeout_s": 900.0,
+  "external_observer_deadline_s": 945.0,
+  "ros_domain_id": 42,
+  "concurrent_missions": 1,
+  "metrics": [
+    "delivered",
+    "collected",
+    "battery_remaining",
+    "battery_used",
+    "route_length_m",
+    "elapsed_wall_s",
+    "elapsed_sim_s",
+    "replans_full_journal",
+    "return_success",
+    "safety_events"
+  ],
+  "llm_classification": [
+    "PROVIDER_EXECUTED",
+    "MIXED_FALLBACK",
+    "FALLBACK_ONLY",
+    "PROVIDER_FAILED",
+    "NOT_VERIFIED"
+  ],
+  "runs": [
+    {
+      "run_id": "easy-seed1-algorithmic-baseline",
+      "pair_id": "easy-seed1-algorithmic",
+      "session": {
+        "scenario": "easy",
+        "seed": 1,
+        "mode": "baseline",
+        "planner_mode": "algorithmic"
+      },
+      "result_json": "experiments/runs/full-matrix/CAMPAIGN/easy-seed1-algorithmic-baseline.json",
+      "status": "NOT_RUN"
+    },
+    {
+      "run_id": "easy-seed1-algorithmic-adaptive",
+      "pair_id": "easy-seed1-algorithmic",
+      "session": {
+        "scenario": "easy",
+        "seed": 1,
+        "mode": "adaptive",
+        "planner_mode": "algorithmic"
+      },
+      "result_json": "experiments/runs/full-matrix/CAMPAIGN/easy-seed1-algorithmic-adaptive.json",
+      "status": "NOT_RUN"
+    },
+    {
+      "run_id": "easy-seed1-llm-baseline",
+      "pair_id": "easy-seed1-llm",
+      "session": {
+        "scenario": "easy",
+        "seed": 1,
+        "mode": "baseline",
+        "planner_mode": "llm"
+      },
+      "result_json": "experiments/runs/full-matrix/CAMPAIGN/easy-seed1-llm-baseline.json",
+      "status": "NOT_RUN"
+    },
+    {
+      "run_id": "easy-seed1-llm-adaptive",
+      "pair_id": "easy-seed1-llm",
+      "session": {
+        "scenario": "easy",
+        "seed": 1,
+        "mode": "adaptive",
+        "planner_mode": "llm"
+      },
+      "result_json": "experiments/runs/full-matrix/CAMPAIGN/easy-seed1-llm-adaptive.json",
+      "status": "NOT_RUN"
+    },
+    {
+      "run_id": "easy-seed2-algorithmic-adaptive",
+      "pair_id": "easy-seed2-algorithmic",
+      "session": {
+        "scenario": "easy",
+        "seed": 2,
+        "mode": "adaptive",
+        "planner_mode": "algorithmic"
+      },
+      "result_json": "experiments/runs/full-matrix/CAMPAIGN/easy-seed2-algorithmic-adaptive.json",
+      "status": "NOT_RUN"
+    },
+    {
+      "run_id": "easy-seed2-algorithmic-baseline",
+      "pair_id": "easy-seed2-algorithmic",
+      "session": {
+        "scenario": "easy",
+        "seed": 2,
+        "mode": "baseline",
+        "planner_mode": "algorithmic"
+      },
+      "result_json": "experiments/runs/full-matrix/CAMPAIGN/easy-seed2-algorithmic-baseline.json",
+      "status": "NOT_RUN"
+    },
+    {
+      "run_id": "easy-seed2-llm-adaptive",
+      "pair_id": "easy-seed2-llm",
+      "session": {
+        "scenario": "easy",
+        "seed": 2,
+        "mode": "adaptive",
+        "planner_mode": "llm"
+      },
+      "result_json": "experiments/runs/full-matrix/CAMPAIGN/easy-seed2-llm-adaptive.json",
+      "status": "NOT_RUN"
+    },
+    {
+      "run_id": "easy-seed2-llm-baseline",
+      "pair_id": "easy-seed2-llm",
+      "session": {
+        "scenario": "easy",
+        "seed": 2,
+        "mode": "baseline",
+        "planner_mode": "llm"
+      },
+      "result_json": "experiments/runs/full-matrix/CAMPAIGN/easy-seed2-llm-baseline.json",
+      "status": "NOT_RUN"
+    },
+    {
+      "run_id": "easy-seed3-algorithmic-baseline",
+      "pair_id": "easy-seed3-algorithmic",
+      "session": {
+        "scenario": "easy",
+        "seed": 3,
+        "mode": "baseline",
+        "planner_mode": "algorithmic"
+      },
+      "result_json": "experiments/runs/full-matrix/CAMPAIGN/easy-seed3-algorithmic-baseline.json",
+      "status": "NOT_RUN"
+    },
+    {
+      "run_id": "easy-seed3-algorithmic-adaptive",
+      "pair_id": "easy-seed3-algorithmic",
+      "session": {
+        "scenario": "easy",
+        "seed": 3,
+        "mode": "adaptive",
+        "planner_mode": "algorithmic"
+      },
+      "result_json": "experiments/runs/full-matrix/CAMPAIGN/easy-seed3-algorithmic-adaptive.json",
+      "status": "NOT_RUN"
+    },
+    {
+      "run_id": "easy-seed3-llm-baseline",
+      "pair_id": "easy-seed3-llm",
+      "session": {
+        "scenario": "easy",
+        "seed": 3,
+        "mode": "baseline",
+        "planner_mode": "llm"
+      },
+      "result_json": "experiments/runs/full-matrix/CAMPAIGN/easy-seed3-llm-baseline.json",
+      "status": "NOT_RUN"
+    },
+    {
+      "run_id": "easy-seed3-llm-adaptive",
+      "pair_id": "easy-seed3-llm",
+      "session": {
+        "scenario": "easy",
+        "seed": 3,
+        "mode": "adaptive",
+        "planner_mode": "llm"
+      },
+      "result_json": "experiments/runs/full-matrix/CAMPAIGN/easy-seed3-llm-adaptive.json",
+      "status": "NOT_RUN"
+    },
+    {
+      "run_id": "easy-seed4-algorithmic-adaptive",
+      "pair_id": "easy-seed4-algorithmic",
+      "session": {
+        "scenario": "easy",
+        "seed": 4,
+        "mode": "adaptive",
+        "planner_mode": "algorithmic"
+      },
+      "result_json": "experiments/runs/full-matrix/CAMPAIGN/easy-seed4-algorithmic-adaptive.json",
+      "status": "NOT_RUN"
+    },
+    {
+      "run_id": "easy-seed4-algorithmic-baseline",
+      "pair_id": "easy-seed4-algorithmic",
+      "session": {
+        "scenario": "easy",
+        "seed": 4,
+        "mode": "baseline",
+        "planner_mode": "algorithmic"
+      },
+      "result_json": "experiments/runs/full-matrix/CAMPAIGN/easy-seed4-algorithmic-baseline.json",
+      "status": "NOT_RUN"
+    },
+    {
+      "run_id": "easy-seed4-llm-adaptive",
+      "pair_id": "easy-seed4-llm",
+      "session": {
+        "scenario": "easy",
+        "seed": 4,
+        "mode": "adaptive",
+        "planner_mode": "llm"
+      },
+      "result_json": "experiments/runs/full-matrix/CAMPAIGN/easy-seed4-llm-adaptive.json",
+      "status": "NOT_RUN"
+    },
+    {
+      "run_id": "easy-seed4-llm-baseline",
+      "pair_id": "easy-seed4-llm",
+      "session": {
+        "scenario": "easy",
+        "seed": 4,
+        "mode": "baseline",
+        "planner_mode": "llm"
+      },
+      "result_json": "experiments/runs/full-matrix/CAMPAIGN/easy-seed4-llm-baseline.json",
+      "status": "NOT_RUN"
+    },
+    {
+      "run_id": "easy-seed5-algorithmic-baseline",
+      "pair_id": "easy-seed5-algorithmic",
+      "session": {
+        "scenario": "easy",
+        "seed": 5,
+        "mode": "baseline",
+        "planner_mode": "algorithmic"
+      },
+      "result_json": "experiments/runs/full-matrix/CAMPAIGN/easy-seed5-algorithmic-baseline.json",
+      "status": "NOT_RUN"
+    },
+    {
+      "run_id": "easy-seed5-algorithmic-adaptive",
+      "pair_id": "easy-seed5-algorithmic",
+      "session": {
+        "scenario": "easy",
+        "seed": 5,
+        "mode": "adaptive",
+        "planner_mode": "algorithmic"
+      },
+      "result_json": "experiments/runs/full-matrix/CAMPAIGN/easy-seed5-algorithmic-adaptive.json",
+      "status": "NOT_RUN"
+    },
+    {
+      "run_id": "easy-seed5-llm-baseline",
+      "pair_id": "easy-seed5-llm",
+      "session": {
+        "scenario": "easy",
+        "seed": 5,
+        "mode": "baseline",
+        "planner_mode": "llm"
+      },
+      "result_json": "experiments/runs/full-matrix/CAMPAIGN/easy-seed5-llm-baseline.json",
+      "status": "NOT_RUN"
+    },
+    {
+      "run_id": "easy-seed5-llm-adaptive",
+      "pair_id": "easy-seed5-llm",
+      "session": {
+        "scenario": "easy",
+        "seed": 5,
+        "mode": "adaptive",
+        "planner_mode": "llm"
+      },
+      "result_json": "experiments/runs/full-matrix/CAMPAIGN/easy-seed5-llm-adaptive.json",
+      "status": "NOT_RUN"
+    },
+    {
+      "run_id": "medium-seed1-algorithmic-baseline",
+      "pair_id": "medium-seed1-algorithmic",
+      "session": {
+        "scenario": "medium",
+        "seed": 1,
+        "mode": "baseline",
+        "planner_mode": "algorithmic"
+      },
+      "result_json": "experiments/runs/full-matrix/CAMPAIGN/medium-seed1-algorithmic-baseline.json",
+      "status": "NOT_RUN"
+    },
+    {
+      "run_id": "medium-seed1-algorithmic-adaptive",
+      "pair_id": "medium-seed1-algorithmic",
+      "session": {
+        "scenario": "medium",
+        "seed": 1,
+        "mode": "adaptive",
+        "planner_mode": "algorithmic"
+      },
+      "result_json": "experiments/runs/full-matrix/CAMPAIGN/medium-seed1-algorithmic-adaptive.json",
+      "status": "NOT_RUN"
+    },
+    {
+      "run_id": "medium-seed1-llm-baseline",
+      "pair_id": "medium-seed1-llm",
+      "session": {
+        "scenario": "medium",
+        "seed": 1,
+        "mode": "baseline",
+        "planner_mode": "llm"
+      },
+      "result_json": "experiments/runs/full-matrix/CAMPAIGN/medium-seed1-llm-baseline.json",
+      "status": "NOT_RUN"
+    },
+    {
+      "run_id": "medium-seed1-llm-adaptive",
+      "pair_id": "medium-seed1-llm",
+      "session": {
+        "scenario": "medium",
+        "seed": 1,
+        "mode": "adaptive",
+        "planner_mode": "llm"
+      },
+      "result_json": "experiments/runs/full-matrix/CAMPAIGN/medium-seed1-llm-adaptive.json",
+      "status": "NOT_RUN"
+    },
+    {
+      "run_id": "medium-seed2-algorithmic-adaptive",
+      "pair_id": "medium-seed2-algorithmic",
+      "session": {
+        "scenario": "medium",
+        "seed": 2,
+        "mode": "adaptive",
+        "planner_mode": "algorithmic"
+      },
+      "result_json": "experiments/runs/full-matrix/CAMPAIGN/medium-seed2-algorithmic-adaptive.json",
+      "status": "NOT_RUN"
+    },
+    {
+      "run_id": "medium-seed2-algorithmic-baseline",
+      "pair_id": "medium-seed2-algorithmic",
+      "session": {
+        "scenario": "medium",
+        "seed": 2,
+        "mode": "baseline",
+        "planner_mode": "algorithmic"
+      },
+      "result_json": "experiments/runs/full-matrix/CAMPAIGN/medium-seed2-algorithmic-baseline.json",
+      "status": "NOT_RUN"
+    },
+    {
+      "run_id": "medium-seed2-llm-adaptive",
+      "pair_id": "medium-seed2-llm",
+      "session": {
+        "scenario": "medium",
+        "seed": 2,
+        "mode": "adaptive",
+        "planner_mode": "llm"
+      },
+      "result_json": "experiments/runs/full-matrix/CAMPAIGN/medium-seed2-llm-adaptive.json",
+      "status": "NOT_RUN"
+    },
+    {
+      "run_id": "medium-seed2-llm-baseline",
+      "pair_id": "medium-seed2-llm",
+      "session": {
+        "scenario": "medium",
+        "seed": 2,
+        "mode": "baseline",
+        "planner_mode": "llm"
+      },
+      "result_json": "experiments/runs/full-matrix/CAMPAIGN/medium-seed2-llm-baseline.json",
+      "status": "NOT_RUN"
+    },
+    {
+      "run_id": "medium-seed3-algorithmic-baseline",
+      "pair_id": "medium-seed3-algorithmic",
+      "session": {
+        "scenario": "medium",
+        "seed": 3,
+        "mode": "baseline",
+        "planner_mode": "algorithmic"
+      },
+      "result_json": "experiments/runs/full-matrix/CAMPAIGN/medium-seed3-algorithmic-baseline.json",
+      "status": "NOT_RUN"
+    },
+    {
+      "run_id": "medium-seed3-algorithmic-adaptive",
+      "pair_id": "medium-seed3-algorithmic",
+      "session": {
+        "scenario": "medium",
+        "seed": 3,
+        "mode": "adaptive",
+        "planner_mode": "algorithmic"
+      },
+      "result_json": "experiments/runs/full-matrix/CAMPAIGN/medium-seed3-algorithmic-adaptive.json",
+      "status": "NOT_RUN"
+    },
+    {
+      "run_id": "medium-seed3-llm-baseline",
+      "pair_id": "medium-seed3-llm",
+      "session": {
+        "scenario": "medium",
+        "seed": 3,
+        "mode": "baseline",
+        "planner_mode": "llm"
+      },
+      "result_json": "experiments/runs/full-matrix/CAMPAIGN/medium-seed3-llm-baseline.json",
+      "status": "NOT_RUN"
+    },
+    {
+      "run_id": "medium-seed3-llm-adaptive",
+      "pair_id": "medium-seed3-llm",
+      "session": {
+        "scenario": "medium",
+        "seed": 3,
+        "mode": "adaptive",
+        "planner_mode": "llm"
+      },
+      "result_json": "experiments/runs/full-matrix/CAMPAIGN/medium-seed3-llm-adaptive.json",
+      "status": "NOT_RUN"
+    },
+    {
+      "run_id": "medium-seed4-algorithmic-adaptive",
+      "pair_id": "medium-seed4-algorithmic",
+      "session": {
+        "scenario": "medium",
+        "seed": 4,
+        "mode": "adaptive",
+        "planner_mode": "algorithmic"
+      },
+      "result_json": "experiments/runs/full-matrix/CAMPAIGN/medium-seed4-algorithmic-adaptive.json",
+      "status": "NOT_RUN"
+    },
+    {
+      "run_id": "medium-seed4-algorithmic-baseline",
+      "pair_id": "medium-seed4-algorithmic",
+      "session": {
+        "scenario": "medium",
+        "seed": 4,
+        "mode": "baseline",
+        "planner_mode": "algorithmic"
+      },
+      "result_json": "experiments/runs/full-matrix/CAMPAIGN/medium-seed4-algorithmic-baseline.json",
+      "status": "NOT_RUN"
+    },
+    {
+      "run_id": "medium-seed4-llm-adaptive",
+      "pair_id": "medium-seed4-llm",
+      "session": {
+        "scenario": "medium",
+        "seed": 4,
+        "mode": "adaptive",
+        "planner_mode": "llm"
+      },
+      "result_json": "experiments/runs/full-matrix/CAMPAIGN/medium-seed4-llm-adaptive.json",
+      "status": "NOT_RUN"
+    },
+    {
+      "run_id": "medium-seed4-llm-baseline",
+      "pair_id": "medium-seed4-llm",
+      "session": {
+        "scenario": "medium",
+        "seed": 4,
+        "mode": "baseline",
+        "planner_mode": "llm"
+      },
+      "result_json": "experiments/runs/full-matrix/CAMPAIGN/medium-seed4-llm-baseline.json",
+      "status": "NOT_RUN"
+    },
+    {
+      "run_id": "medium-seed5-algorithmic-baseline",
+      "pair_id": "medium-seed5-algorithmic",
+      "session": {
+        "scenario": "medium",
+        "seed": 5,
+        "mode": "baseline",
+        "planner_mode": "algorithmic"
+      },
+      "result_json": "experiments/runs/full-matrix/CAMPAIGN/medium-seed5-algorithmic-baseline.json",
+      "status": "NOT_RUN"
+    },
+    {
+      "run_id": "medium-seed5-algorithmic-adaptive",
+      "pair_id": "medium-seed5-algorithmic",
+      "session": {
+        "scenario": "medium",
+        "seed": 5,
+        "mode": "adaptive",
+        "planner_mode": "algorithmic"
+      },
+      "result_json": "experiments/runs/full-matrix/CAMPAIGN/medium-seed5-algorithmic-adaptive.json",
+      "status": "NOT_RUN"
+    },
+    {
+      "run_id": "medium-seed5-llm-baseline",
+      "pair_id": "medium-seed5-llm",
+      "session": {
+        "scenario": "medium",
+        "seed": 5,
+        "mode": "baseline",
+        "planner_mode": "llm"
+      },
+      "result_json": "experiments/runs/full-matrix/CAMPAIGN/medium-seed5-llm-baseline.json",
+      "status": "NOT_RUN"
+    },
+    {
+      "run_id": "medium-seed5-llm-adaptive",
+      "pair_id": "medium-seed5-llm",
+      "session": {
+        "scenario": "medium",
+        "seed": 5,
+        "mode": "adaptive",
+        "planner_mode": "llm"
+      },
+      "result_json": "experiments/runs/full-matrix/CAMPAIGN/medium-seed5-llm-adaptive.json",
+      "status": "NOT_RUN"
+    },
+    {
+      "run_id": "hard-seed1-algorithmic-baseline",
+      "pair_id": "hard-seed1-algorithmic",
+      "session": {
+        "scenario": "hard",
+        "seed": 1,
+        "mode": "baseline",
+        "planner_mode": "algorithmic"
+      },
+      "result_json": "experiments/runs/full-matrix/CAMPAIGN/hard-seed1-algorithmic-baseline.json",
+      "status": "NOT_RUN"
+    },
+    {
+      "run_id": "hard-seed1-algorithmic-adaptive",
+      "pair_id": "hard-seed1-algorithmic",
+      "session": {
+        "scenario": "hard",
+        "seed": 1,
+        "mode": "adaptive",
+        "planner_mode": "algorithmic"
+      },
+      "result_json": "experiments/runs/full-matrix/CAMPAIGN/hard-seed1-algorithmic-adaptive.json",
+      "status": "NOT_RUN"
+    },
+    {
+      "run_id": "hard-seed1-llm-baseline",
+      "pair_id": "hard-seed1-llm",
+      "session": {
+        "scenario": "hard",
+        "seed": 1,
+        "mode": "baseline",
+        "planner_mode": "llm"
+      },
+      "result_json": "experiments/runs/full-matrix/CAMPAIGN/hard-seed1-llm-baseline.json",
+      "status": "NOT_RUN"
+    },
+    {
+      "run_id": "hard-seed1-llm-adaptive",
+      "pair_id": "hard-seed1-llm",
+      "session": {
+        "scenario": "hard",
+        "seed": 1,
+        "mode": "adaptive",
+        "planner_mode": "llm"
+      },
+      "result_json": "experiments/runs/full-matrix/CAMPAIGN/hard-seed1-llm-adaptive.json",
+      "status": "NOT_RUN"
+    },
+    {
+      "run_id": "hard-seed2-algorithmic-adaptive",
+      "pair_id": "hard-seed2-algorithmic",
+      "session": {
+        "scenario": "hard",
+        "seed": 2,
+        "mode": "adaptive",
+        "planner_mode": "algorithmic"
+      },
+      "result_json": "experiments/runs/full-matrix/CAMPAIGN/hard-seed2-algorithmic-adaptive.json",
+      "status": "NOT_RUN"
+    },
+    {
+      "run_id": "hard-seed2-algorithmic-baseline",
+      "pair_id": "hard-seed2-algorithmic",
+      "session": {
+        "scenario": "hard",
+        "seed": 2,
+        "mode": "baseline",
+        "planner_mode": "algorithmic"
+      },
+      "result_json": "experiments/runs/full-matrix/CAMPAIGN/hard-seed2-algorithmic-baseline.json",
+      "status": "NOT_RUN"
+    },
+    {
+      "run_id": "hard-seed2-llm-adaptive",
+      "pair_id": "hard-seed2-llm",
+      "session": {
+        "scenario": "hard",
+        "seed": 2,
+        "mode": "adaptive",
+        "planner_mode": "llm"
+      },
+      "result_json": "experiments/runs/full-matrix/CAMPAIGN/hard-seed2-llm-adaptive.json",
+      "status": "NOT_RUN"
+    },
+    {
+      "run_id": "hard-seed2-llm-baseline",
+      "pair_id": "hard-seed2-llm",
+      "session": {
+        "scenario": "hard",
+        "seed": 2,
+        "mode": "baseline",
+        "planner_mode": "llm"
+      },
+      "result_json": "experiments/runs/full-matrix/CAMPAIGN/hard-seed2-llm-baseline.json",
+      "status": "NOT_RUN"
+    },
+    {
+      "run_id": "hard-seed3-algorithmic-baseline",
+      "pair_id": "hard-seed3-algorithmic",
+      "session": {
+        "scenario": "hard",
+        "seed": 3,
+        "mode": "baseline",
+        "planner_mode": "algorithmic"
+      },
+      "result_json": "experiments/runs/full-matrix/CAMPAIGN/hard-seed3-algorithmic-baseline.json",
+      "status": "NOT_RUN"
+    },
+    {
+      "run_id": "hard-seed3-algorithmic-adaptive",
+      "pair_id": "hard-seed3-algorithmic",
+      "session": {
+        "scenario": "hard",
+        "seed": 3,
+        "mode": "adaptive",
+        "planner_mode": "algorithmic"
+      },
+      "result_json": "experiments/runs/full-matrix/CAMPAIGN/hard-seed3-algorithmic-adaptive.json",
+      "status": "NOT_RUN"
+    },
+    {
+      "run_id": "hard-seed3-llm-baseline",
+      "pair_id": "hard-seed3-llm",
+      "session": {
+        "scenario": "hard",
+        "seed": 3,
+        "mode": "baseline",
+        "planner_mode": "llm"
+      },
+      "result_json": "experiments/runs/full-matrix/CAMPAIGN/hard-seed3-llm-baseline.json",
+      "status": "NOT_RUN"
+    },
+    {
+      "run_id": "hard-seed3-llm-adaptive",
+      "pair_id": "hard-seed3-llm",
+      "session": {
+        "scenario": "hard",
+        "seed": 3,
+        "mode": "adaptive",
+        "planner_mode": "llm"
+      },
+      "result_json": "experiments/runs/full-matrix/CAMPAIGN/hard-seed3-llm-adaptive.json",
+      "status": "NOT_RUN"
+    },
+    {
+      "run_id": "hard-seed4-algorithmic-adaptive",
+      "pair_id": "hard-seed4-algorithmic",
+      "session": {
+        "scenario": "hard",
+        "seed": 4,
+        "mode": "adaptive",
+        "planner_mode": "algorithmic"
+      },
+      "result_json": "experiments/runs/full-matrix/CAMPAIGN/hard-seed4-algorithmic-adaptive.json",
+      "status": "NOT_RUN"
+    },
+    {
+      "run_id": "hard-seed4-algorithmic-baseline",
+      "pair_id": "hard-seed4-algorithmic",
+      "session": {
+        "scenario": "hard",
+        "seed": 4,
+        "mode": "baseline",
+        "planner_mode": "algorithmic"
+      },
+      "result_json": "experiments/runs/full-matrix/CAMPAIGN/hard-seed4-algorithmic-baseline.json",
+      "status": "NOT_RUN"
+    },
+    {
+      "run_id": "hard-seed4-llm-adaptive",
+      "pair_id": "hard-seed4-llm",
+      "session": {
+        "scenario": "hard",
+        "seed": 4,
+        "mode": "adaptive",
+        "planner_mode": "llm"
+      },
+      "result_json": "experiments/runs/full-matrix/CAMPAIGN/hard-seed4-llm-adaptive.json",
+      "status": "NOT_RUN"
+    },
+    {
+      "run_id": "hard-seed4-llm-baseline",
+      "pair_id": "hard-seed4-llm",
+      "session": {
+        "scenario": "hard",
+        "seed": 4,
+        "mode": "baseline",
+        "planner_mode": "llm"
+      },
+      "result_json": "experiments/runs/full-matrix/CAMPAIGN/hard-seed4-llm-baseline.json",
+      "status": "NOT_RUN"
+    },
+    {
+      "run_id": "hard-seed5-algorithmic-baseline",
+      "pair_id": "hard-seed5-algorithmic",
+      "session": {
+        "scenario": "hard",
+        "seed": 5,
+        "mode": "baseline",
+        "planner_mode": "algorithmic"
+      },
+      "result_json": "experiments/runs/full-matrix/CAMPAIGN/hard-seed5-algorithmic-baseline.json",
+      "status": "NOT_RUN"
+    },
+    {
+      "run_id": "hard-seed5-algorithmic-adaptive",
+      "pair_id": "hard-seed5-algorithmic",
+      "session": {
+        "scenario": "hard",
+        "seed": 5,
+        "mode": "adaptive",
+        "planner_mode": "algorithmic"
+      },
+      "result_json": "experiments/runs/full-matrix/CAMPAIGN/hard-seed5-algorithmic-adaptive.json",
+      "status": "NOT_RUN"
+    },
+    {
+      "run_id": "hard-seed5-llm-baseline",
+      "pair_id": "hard-seed5-llm",
+      "session": {
+        "scenario": "hard",
+        "seed": 5,
+        "mode": "baseline",
+        "planner_mode": "llm"
+      },
+      "result_json": "experiments/runs/full-matrix/CAMPAIGN/hard-seed5-llm-baseline.json",
+      "status": "NOT_RUN"
+    },
+    {
+      "run_id": "hard-seed5-llm-adaptive",
+      "pair_id": "hard-seed5-llm",
+      "session": {
+        "scenario": "hard",
+        "seed": 5,
+        "mode": "adaptive",
+        "planner_mode": "llm"
+      },
+      "result_json": "experiments/runs/full-matrix/CAMPAIGN/hard-seed5-llm-adaptive.json",
+      "status": "NOT_RUN"
+    }
+  ]
+}
