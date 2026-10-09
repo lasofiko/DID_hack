@@ -7,6 +7,7 @@ import json
 import time
 import uuid
 from did_core.types import MissionState, StartRequest, Command, Subgoal
+from did_ml.journal import JournalWriteError
 from .battery import BatteryManager, ReturnToBase
 from .search import SampleSearch
 from .planner_bridge import ResearchBridge, ResearchPlanner, public_observation
@@ -115,8 +116,10 @@ class MissionManager:
             return False
         if goal['action'] not in ('explore','go_to','collect','return_to_base') or not isinstance(goal['reason'],str):
             return False
-        if goal['hypothesis_id'] is not None:  # No hypothesis registry in this MVP.
-            return False
+        if goal['hypothesis_id'] is not None:
+            if (self._research is None or not isinstance(goal['hypothesis_id'], str)
+                    or goal['hypothesis_id'] not in self._research.planner.active_hypothesis_ids):
+                return False
         target = goal['target']
         if goal['action'] in ('collect','return_to_base'):
             return target is None
@@ -132,8 +135,13 @@ class MissionManager:
                 # propose will reject such a snapshot and backend safety still applies.
                 pass
 
+    def _fail_llm_journal(self):
+        self._planner_failed = True
+        self.planner_source = 'Algorithmic'
+        self._state['status'] = 'failed'
+
     def _planner_result(self, success, code):
-        if self._research is not None and self._research.pending is not None:
+        if self._research is not None and self._research.pending is not None and not self._planner_failed:
             obs = self.robot.snapshot()
             if obs is None:
                 # A clock reset/missing snapshot has no valid result timestamp.
@@ -141,6 +149,9 @@ class MissionManager:
                 return
             try:
                 self._research.complete(success, code, obs['sim_time'])
+            except JournalWriteError:
+                self._fail_llm_journal()
+                raise
             except Exception as exc:
                 self._planner_failed = True
                 self.log('Planner result unavailable: '+type(exc).__name__)
@@ -167,6 +178,9 @@ class MissionManager:
                         raise RejectedSubgoal('Collect signal unconfirmed')
                     self.planner_source = self._research.source() if self._research else 'Algorithmic'
                     return goal
+                except JournalWriteError:
+                    self._fail_llm_journal()
+                    raise
                 except Exception as exc:
                     self._planner_result(False, 'BACKEND_REJECTED')
                     feedback = str(exc) if isinstance(exc,RejectedSubgoal) else type(exc).__name__
@@ -270,6 +284,8 @@ class MissionManager:
                 await self.navigator.stop()
                 goal = await self.choose(obs,search)
                 if self._state['status'] != 'running':
+                    # A late provider reply must not relabel an operator interruption.
+                    self.planner_source = 'Algorithmic'
                     self._planner_result(False, 'INTERRUPTED')
                     continue
                 # Provider latency may invalidate the sensor snapshot and budgets.

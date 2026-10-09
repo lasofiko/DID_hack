@@ -1,0 +1,11 @@
+{
+  "requests": 1,
+  "manager_source": "LLM",
+  "action": "explore",
+  "elapsed_s": 2.563,
+  "physical_execution": false,
+  "result_recorded": true,
+  "client_closed": true,
+  "replay_exact": true,
+  "accepted": true
+}
