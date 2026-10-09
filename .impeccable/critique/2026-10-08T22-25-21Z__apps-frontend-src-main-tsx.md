@@ -2,7 +2,7 @@
 target: existing DID LAB interface
 total_score: 22
 max_score: 40
-na_heuristics: 
+na_heuristics:
 p0_count: 0
 p1_count: 3
 target_identity: "file:/Users/kirito/.codex/worktrees/7d7a/DID_hack/apps/frontend/src/main.tsx"
