@@ -1,0 +1,16 @@
+{
+  "total": 196,
+  "passed": 194,
+  "failed": 0,
+  "skipped": 0,
+  "errors": 2,
+  "elapsed_s": 33.390034999996715,
+  "python": "3.13.13 macOS ARM64",
+  "failures": [],
+  "error_tests": [
+    "unittest.loader._FailedTest.tests.test_llm_mission_runtime",
+    "unittest.loader._FailedTest.tests.test_ml_provider"
+  ],
+  "skipped_tests": [],
+  "scope": "full existing unittest discovery plus navigation regressions; not ROS/Gazebo"
+}

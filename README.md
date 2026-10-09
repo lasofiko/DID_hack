@@ -1,59 +1,67 @@
-# DID Hack — скелет проекта
+# DID LAB — автономный исследователь
 
-Только структура и минимальный запуск. Логика робота, ML и симуляция пока не реализованы.
-
-```text
-apps/
-  backend/        FastAPI: точка входа и GET /api/health
-  frontend/       React + TypeScript: стартовая страница
-packages/
-  contracts/      общие типы и интерфейсы, без реализации
-  agent/          логика агента и планирование (TODO)
-  ml/             LLM, промпты, модель расхода (TODO)
-  environment/    сценарии и судья (TODO)
-ros2/             ROS-узлы и launch (TODO)
-configs/          настройки (TODO)
-tests/            тесты (TODO)
-experiments/      результаты запусков (TODO)
-docs/             описание архитектуры
-scripts/          запуск
-```
-
-## Первый запуск
-
-Нужны Python 3.12+ и Node.js 22.12+.
+Один агент TurtleBot3 Burger: React/TypeScript → FastAPI → ROS 2 Jazzy →
+Gazebo Harmonic. Headless Gazebo, настоящие odom/lidar/TF, команды TwistStamped;
+сигнал образцов, батарея, сбор и finish — отдельный **локальный mock-судья**.
+Системный ROS/Python macOS не нужны. Интеграционная ветка: feature/system-integration.
+Она объединяет DID LAB, оригинальную EnergyModel Марии и ResearchPlanner Сони.
+[Отчёт этапа 1 и ограничения проверки](docs/integration/STAGE1.md).
 
 ```sh
-python -m venv .venv
+# Терминал на Mac, каталог DID_hack. Проверенное ARM64-зеркало Ubuntu:
+UBUNTU_MIRROR=https://mirror.yandex.ru/ubuntu-ports docker compose up -d --build
 ```
 
-Активация Windows: `.venv\Scripts\Activate.ps1`.
-Linux: `source .venv/bin/activate`.
+Открыть **http://localhost:3000**. Дождаться ONLINE / IDLE, выбрать EASY и seed,
+нажать Start mission. Start/Pause/Resume/Return/Stop вызывают реальные ROS services;
+Reset пересоздаёт собственный Gazebo/ROS launch и mock-судью. Без Start робот
+остаётся неподвижным. На карте показаны измеренная траектория, цель и маршрут;
+в adaptive — наблюдаемые оценки затрат. Скрытых образцов/грунтов/будущих событий нет.
 
 ```sh
-python -m pip install -e .
-npm ci --prefix apps/frontend
-npm run build
-npm run dev
+docker compose logs --tail 100
+docker compose exec -T simulation bash docker/entrypoint.sh ros2 topic info /cmd_vel -v
+docker compose exec -T simulation bash docker/entrypoint.sh python3 -m unittest discover -s tests -t .
+docker compose down
 ```
 
-Открыть http://127.0.0.1:8000. Страница показывает статус подключения к бэкенду.
-После установки и сборки достаточно `npm run dev`.
+[Пошаговый запуск на русском](docs/QUICK_START.md),
+[проверки и ограничения](docs/validation.md),
+[архитектура](docs/architecture.md),
+[энергетическая модель Марии и правила измерений](docs/ENERGY_INTEGRATION.md).
 
-Для разработки фронта с hot reload запустить во втором терминале:
+EASY содержит 3 образца/1 зону; MEDIUM — 5/3, без изменений;
+HARD — 7/4 и приватные изменения стоимости, опасность и сбой сигнала.
+Количество в интерфейсе — количество в среде, не обещание полной доставки.
+Safety/батарея могут вызвать ранний возврат; HARD может закончиться безопасным
+отказом при недостоверном датчике. Алгоритмическая и адаптивная стратегии работают
+в одном агенте. Существующий MAI/DeepSeek-клиент соединён с MissionManager через managed factory.
+HTTP-мок проверен; настоящий API и ROS/Gazebo e2e ещё требуют проверки.
+
+[Контракт API](docs/api.md), [подключение Сони](docs/LLM_INTEGRATION.md),
+[подключение Марии](docs/ENERGY_INTEGRATION.md). Их модуль `packages/ml/did_ml`
+не переписан; командные договорённости `docs/team.md` сохранены.
 
 ```sh
-npm run dev --prefix apps/frontend
+# Алгоритмические проверки в уже существующем Python 3.12 окружении:
+.venv/bin/python -m unittest discover -s tests -t .
+.venv/bin/python scripts/check_scenarios.py
+.venv/bin/python scripts/check_ros_package.py
 ```
 
-Vite проксирует `/api` на бэкенд порта 8000.
-Назначение модулей: [архитектура](docs/architecture.md).
+Локальные результаты проверок сохраняются в `experiments/runs/` и исключены из Git.
+Unit/кинематика и физические Gazebo-прогоны описаны отдельно в
+[документации проверки](docs/validation.md). Запуск на Ubuntu x86-64 предусмотрен
+нативной сборкой того же Dockerfile, но пока не проверен на сервере.
 
-## Команде: с чего начать
+## Проверка интеграции без ROS и внешней модели
 
-1. [Кто что пишет и как соединять модули](docs/team.md).
-2. [Форматы данных](packages/contracts/did_core/types.py) и [подписи интерфейсов](packages/contracts/did_core/ports.py).
-3. [Контракт API для фронта и бэка](docs/api.md).
+    python -m pip install -e ".[ml]"
+    python scripts/test_stage1.py
+    python scripts/test_ml.py
 
-Типы и Protocol — договорённости, не готовые алгоритмы. Реализацию каждый
-пишет в своём модуле. Дополнительные API пока существуют только в документации.
+Для Windows перед тестами: PowerShell $env:PYTHONUTF8="1".
+Первый runner явно пропускает полные кинематические миссии.
+Для сборки frontend: cd apps/frontend, npm ci, npm run build.
+Подключение LLM и offline planner: [LLM_INTEGRATION](docs/LLM_INTEGRATION.md).
+Историческая документация dev сохранена в [архиве](docs/integration/preserved-dev/README.md).

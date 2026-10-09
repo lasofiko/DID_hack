@@ -7,8 +7,35 @@ build/
 install/
 log/
 .env
+.env.*
+!.env.example
+!.env.sample
+*.pem
+*.key
+*.p12
+*.pfx
+id_rsa
+id_ed25519
+.aws/
+.codex/
+.agents/
 experiments/runs/
 node_modules/
 dist/
 .pytest_cache/
 *.tsbuildinfo
+*.log
+*.tmp
+*.bak
+.reports/
+reports/
+
+.DS_Store
+
+# Local experiment registration (real and synthetic datasets stay separate)
+experiments/results/
+experiments/test_data/
+
+# Local design-tool preferences and session rolls
+.impeccable/config.local.json
+.impeccable/questions/

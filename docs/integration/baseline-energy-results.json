@@ -1,0 +1,37 @@
+{
+  "root": "C:\\Users\\\u0421\u043e\u043d\u044f\\.codex\\visualizations\\2026\\10\\07\\01a11692-8146-7383-a698-f8484f66504a\\baseline-energy",
+  "total": 143,
+  "passed": 134,
+  "failures": [
+    "test_results.ResultsTests.test_interactive_blank_fields_become_null",
+    "test_results.ResultsTests.test_mixing_datasets_and_duplicates_are_rejected",
+    "test_results.ResultsTests.test_unknowns_zeroes_and_summary_denominator"
+  ],
+  "errors": [],
+  "skipped": [
+    {
+      "test": "test_audit.AuditMission.test_failed_collect_not_counted_and_not_spammed",
+      "reason": "Complete kinematic mission excluded from stage 1"
+    },
+    {
+      "test": "test_audit.AuditMission.test_no_signal_cannot_use_hidden_targets_to_collect",
+      "reason": "Complete kinematic mission excluded from stage 1"
+    },
+    {
+      "test": "test_audit.AuditMission.test_official_map_corner_return_after_early_signal_search",
+      "reason": "Complete kinematic mission excluded from stage 1"
+    },
+    {
+      "test": "test_audit.AuditMission.test_services_proxy_forbids_private_access",
+      "reason": "Complete kinematic mission excluded from stage 1"
+    },
+    {
+      "test": "test_core.MissionTests.test_complete_easy_multiple_seeds",
+      "reason": "Complete kinematic mission excluded from stage 1"
+    },
+    {
+      "test": "test_energy_integration.ReplanTests.test_learning_retries_same_search_objective",
+      "reason": "Complete kinematic mission excluded from stage 1"
+    }
+  ]
+}

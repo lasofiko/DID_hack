@@ -1,0 +1,10 @@
+# Opt-in demo overlay for the existing built image; no scientific config edits.
+services:
+  simulation:
+    environment:
+      DID_AGENT_CONFIG: /workspace/DID_hack/configs/agent-demo.json
+    volumes:
+      - ./configs/agent-demo.json:/workspace/DID_hack/configs/agent-demo.json:ro
+      - ./packages/agent/did_agent/config.py:/workspace/DID_hack/install/did_robot/lib/python3.12/site-packages/did_agent/config.py:ro
+      - ./packages/agent/did_agent/navigation.py:/workspace/DID_hack/install/did_robot/lib/python3.12/site-packages/did_agent/navigation.py:ro
+      - ./apps/backend/did_backend/runtime.py:/workspace/DID_hack/apps/backend/did_backend/runtime.py:ro
