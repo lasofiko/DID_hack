@@ -150,6 +150,8 @@ class RosRuntime:
         root=Path('/workspace/output');root.mkdir(parents=True,exist_ok=True)
         self.log=open(root/'web-runtime.log','a')
         args=['ros2','launch','did_robot','easy.launch.py','headless:=true','mock_judge:=true','coordinates_verified:=false','autostart:=false']
+        if os.environ.get('DID_AGENT_CONFIG'):
+            args.append('config_file:='+os.environ['DID_AGENT_CONFIG'])
         args += [k+':='+str(v) for k,v in self.session.items()]
         self.process=await asyncio.create_subprocess_exec(*args,stdout=self.log,stderr=self.log,start_new_session=True)
     async def _stop_process(self):
@@ -204,7 +206,7 @@ class RosRuntime:
             proc.kill();await proc.wait();raise RuntimeError('Gazebo robot pose unavailable')
         packet=json.loads(out)
         robot=next((p for p in packet.get('pose',[]) if p.get('name')=='burger'),None)
-        pose=self.snapshot()['robot_pose'];cfg=AgentConfig.load('/workspace/DID_hack/configs/agent.json')
+        pose=self.snapshot()['robot_pose'];cfg=AgentConfig.load(os.environ.get('DID_AGENT_CONFIG','/workspace/DID_hack/configs/agent.json'))
         if robot is None or pose is None or math.hypot(robot.get('position',{}).get('x',math.inf)-pose['x'],robot.get('position',{}).get('y',math.inf)-pose['y'])>.15 or math.hypot(pose['x']-cfg.base_x,pose['y']-cfg.base_y)>.15:
             raise RuntimeError('Gazebo robot pose disagrees with map/odom/base')
         client=self.node.create_client(SetParameters,'/did_agent/set_parameters')

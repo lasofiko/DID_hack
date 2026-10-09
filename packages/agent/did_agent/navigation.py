@@ -175,4 +175,10 @@ class MotionController:
         if self.phase is not None and phase!=self.phase:
             self.phase=phase;return 0.0,0.0  # Explicit stop at action boundary.
         self.phase=phase
-        return (0.0,angular) if phase=='turn' else (min(self.config.max_linear,0.8*d),0.0)
+        if phase == 'turn':
+            return 0.0, angular
+        tolerance = self.config.goal_tolerance if tolerance is None else tolerance
+        # Demo gain keeps cruise speed closer to the goal. Preserve half the
+        # tolerance over two control ticks; never drive past the target.
+        step_limit = max(0.0, d - tolerance * .5) / (2 * self.config.control_period)
+        return min(self.config.max_linear, self.config.linear_approach_gain*d, step_limit), 0.0

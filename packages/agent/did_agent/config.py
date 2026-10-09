@@ -13,6 +13,7 @@ class AgentConfig:
     odom_yaw: float = 0.0
     max_linear: float = 0.18
     max_angular: float = 0.8
+    linear_approach_gain: float = 0.8
     goal_tolerance: float = 0.09
     base_tolerance: float = 0.18
     obstacle_distance: float = 0.28
